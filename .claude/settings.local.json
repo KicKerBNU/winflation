@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run:*)",
+      "Bash(npx vue-tsc:*)",
+      "Bash(curl -s \"https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_manr?format=JSON&freq=M&unit=RCH_A&coicop=CP00&lastTimePeriod=2\")",
+      "Bash(python3 -c ':*)",
+      "Bash(curl -s \"https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_manr?format=JSON&freq=M&unit=RCH_A&coicop=CP00&geo=PT&sinceTimePeriod=2026-01\")",
+      "Bash(curl -s \"https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_cann?format=JSON&freq=M&unit=RCH_A&coicop=CP00&geo=PT&lastTimePeriod=3\")",
+      "Bash(curl -s 'https://ec.europa.eu/eurostat/api/dissemination/sdmx/2.1/data/prc_hicp_manr/M.RCH_A.CP00.PT?format=JSON&lastNObservations=4' -H 'Cache-Control: no-cache')",
+      "Bash(curl -s 'https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_manr?format=JSON&freq=M&unit=RCH_A&coicop=CP00&geo=PT&lastTimePeriod=4' -H 'Cache-Control: no-cache' -H 'Pragma: no-cache')",
+      "Bash(curl -s 'https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_manr?format=JSON&freq=M&unit=RCH_A&coicop=CP00&geo=PT&lastTimePeriod=2' -H 'Accept: application/json')",
+      "Bash(curl -s \"https://ec.europa.eu/eurostat/api/dissemination/statistics/2.0/data/prc_hicp_manr?format=JSON&freq=M&unit=RCH_A&coicop=CP00&geo=PT&lastTimePeriod=2\")",
+      "Bash(npm install:*)"
+    ]
+  }
+}
