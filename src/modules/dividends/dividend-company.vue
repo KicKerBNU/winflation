@@ -161,7 +161,7 @@ watch(() => themeStore.isDark, () => {
 </script>
 
 <template>
-  <div class="p-8">
+  <div class="p-4 pt-16 sm:px-6 sm:pb-6 lg:p-8">
     <!-- Back -->
     <button
       class="mb-6 flex cursor-pointer items-center gap-2 text-sm text-gray-500 transition-colors hover:text-violet-600 dark:text-gray-400 dark:hover:text-violet-400"

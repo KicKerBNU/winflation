@@ -13,13 +13,19 @@ const navItems = [
   { to: '/inflation', icon: 'arrow-trend-up', labelKey: 'nav.inflation' },
   { to: '/dividends', icon: 'coins', labelKey: 'nav.dividends' },
 ]
+
+function isActive(path: string) {
+  if (path === '/') return route.path === '/'
+  return route.path.startsWith(path)
+}
 </script>
 
 <template>
   <div class="flex min-h-screen bg-gray-100 transition-colors duration-200 dark:bg-gray-950">
-    <!-- Sidebar -->
+
+    <!-- Desktop sidebar — hidden on mobile -->
     <aside
-      class="fixed inset-y-0 left-0 flex w-60 flex-col border-r border-gray-200 bg-white transition-colors duration-200 dark:border-gray-800 dark:bg-gray-900"
+      class="fixed inset-y-0 left-0 hidden w-60 flex-col border-r border-gray-200 bg-white transition-colors duration-200 dark:border-gray-800 dark:bg-gray-900 lg:flex"
     >
       <!-- Logo -->
       <div class="flex h-16 items-center border-b border-gray-200 px-6 dark:border-gray-800">
@@ -35,7 +41,7 @@ const navItems = [
           :to="item.to"
           class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
           :class="
-            route.path === item.to
+            isActive(item.to)
               ? 'bg-violet-600 text-white'
               : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white'
           "
@@ -60,9 +66,48 @@ const navItems = [
       </div>
     </aside>
 
-    <!-- Main content -->
-    <main class="ml-60 flex-1">
+    <!-- Main content — no left margin on mobile, ml-60 on desktop -->
+    <main class="min-h-screen w-full pb-20 lg:ml-60 lg:pb-0">
       <RouterView />
     </main>
+
+    <!-- Mobile top header -->
+    <header
+      class="fixed inset-x-0 top-0 z-40 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4 dark:border-gray-800 dark:bg-gray-900 lg:hidden"
+    >
+      <span class="text-base font-bold">
+        <span class="text-violet-600 dark:text-violet-400">winflation</span>
+        <span class="text-gray-400 dark:text-gray-500">.eu</span>
+      </span>
+      <button
+        class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+        @click="themeStore.toggle()"
+      >
+        <FontAwesomeIcon :icon="themeStore.isDark ? 'sun' : 'moon'" />
+      </button>
+    </header>
+
+    <!-- Mobile bottom nav -->
+    <nav
+      class="fixed inset-x-0 bottom-0 z-40 border-t border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900 lg:hidden"
+    >
+      <div class="flex h-16 items-center justify-around">
+        <RouterLink
+          v-for="item in navItems"
+          :key="item.to"
+          :to="item.to"
+          class="flex cursor-pointer flex-col items-center gap-0.5 px-4 py-2 text-xs font-medium transition-colors"
+          :class="
+            isActive(item.to)
+              ? 'text-violet-600 dark:text-violet-400'
+              : 'text-gray-400 dark:text-gray-500'
+          "
+        >
+          <FontAwesomeIcon :icon="item.icon" class="text-lg" />
+          <span>{{ t(item.labelKey) }}</span>
+        </RouterLink>
+      </div>
+    </nav>
+
   </div>
 </template>

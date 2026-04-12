@@ -42,7 +42,7 @@ function countryFlag(code: string): string {
 </script>
 
 <template>
-  <div class="p-8">
+  <div class="p-4 pt-16 sm:px-6 sm:pb-6 lg:p-8">
     <!-- Header -->
     <div class="mb-8">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('dashboard.title') }}</h1>

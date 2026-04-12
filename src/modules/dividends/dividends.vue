@@ -56,7 +56,7 @@ function yieldColor(stock: DividendStock): string {
 </script>
 
 <template>
-  <div class="p-8">
+  <div class="p-4 pt-16 sm:px-6 sm:pb-6 lg:p-8">
     <!-- Header -->
     <div class="mb-8">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('dividends.title') }}</h1>
@@ -82,7 +82,7 @@ function yieldColor(stock: DividendStock): string {
     </div>
 
     <!-- Controls -->
-    <div class="mb-6 flex flex-wrap items-center gap-3">
+    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
       <div class="relative">
         <FontAwesomeIcon
           icon="magnifying-glass"
@@ -92,10 +92,10 @@ function yieldColor(stock: DividendStock): string {
           v-model="search"
           type="text"
           :placeholder="t('dividends.searchPlaceholder')"
-          class="rounded-xl border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-violet-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:placeholder-gray-500"
+          class="w-full rounded-xl border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-violet-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:placeholder-gray-500 sm:w-auto"
         />
       </div>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         <button
           v-for="f in filters"
           :key="f"
@@ -131,92 +131,87 @@ function yieldColor(stock: DividendStock): string {
       v-else
       class="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
     >
-      <table class="w-full">
-        <thead>
-          <tr class="border-b border-gray-200 dark:border-gray-800">
-            <th
-              class="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500"
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[380px]">
+          <thead>
+            <tr class="border-b border-gray-200 dark:border-gray-800">
+              <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 sm:px-6 sm:py-4">
+                {{ t('dividends.company') }}
+              </th>
+              <th class="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 sm:table-cell sm:px-6 sm:py-4">
+                {{ t('dividends.country') }}
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 sm:px-6 sm:py-4">
+                {{ t('dividends.yield') }}
+              </th>
+              <th class="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 md:table-cell md:px-6 md:py-4">
+                {{ t('dividends.sector') }}
+              </th>
+              <th class="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 lg:table-cell lg:px-6 lg:py-4">
+                {{ t('dividends.exchange') }}
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 sm:px-6 sm:py-4">
+                {{ t('dividends.status') }}
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            <tr
+              v-for="stock in filtered"
+              :key="stock.ticker"
+              class="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+              @click="goToCompany(stock.ticker)"
             >
-              {{ t('dividends.company') }}
-            </th>
-            <th
-              class="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500"
-            >
-              {{ t('dividends.country') }}
-            </th>
-            <th
-              class="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500"
-            >
-              {{ t('dividends.yield') }}
-            </th>
-            <th
-              class="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500"
-            >
-              {{ t('dividends.sector') }}
-            </th>
-            <th
-              class="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500"
-            >
-              {{ t('dividends.exchange') }}
-            </th>
-            <th
-              class="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500"
-            >
-              {{ t('dividends.status') }}
-            </th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-          <tr
-            v-for="stock in filtered"
-            :key="stock.ticker"
-            class="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
-            @click="goToCompany(stock.ticker)"
-          >
-            <td class="px-6 py-4">
-              <p class="text-sm font-medium text-gray-900 dark:text-white">{{ stock.company }}</p>
-              <p class="text-xs text-gray-400 dark:text-gray-500">{{ stock.ticker }}</p>
-            </td>
-            <td class="px-6 py-4">
-              <div class="flex items-center gap-2">
-                <span class="text-lg">{{ countryFlag(stock.countryCode) }}</span>
-                <span class="text-sm text-gray-700 dark:text-gray-300">{{ stock.country }}</span>
-              </div>
-            </td>
-            <td class="px-6 py-4">
-              <span class="text-lg font-bold" :class="yieldColor(stock)">
-                {{ stock.dividendYield.toFixed(1) }}%
-              </span>
-            </td>
-            <td class="px-6 py-4">
-              <span
-                class="rounded-full border border-gray-200 px-2.5 py-1 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400"
-              >
-                {{ stock.sector }}
-              </span>
-            </td>
-            <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{{ stock.exchange }}</td>
-            <td class="px-6 py-4">
-              <div class="flex flex-col gap-1">
-                <span
-                  v-if="stock.dividendYield > depositRate"
-                  class="flex items-center gap-1 text-xs text-cyan-600 dark:text-cyan-400"
-                >
-                  <FontAwesomeIcon icon="check" />
-                  {{ t('dividends.beatsEcb') }}
+              <td class="px-4 py-3 sm:px-6 sm:py-4">
+                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ stock.company }}</p>
+                <p class="text-xs text-gray-400 dark:text-gray-500">
+                  {{ stock.ticker }}
+                  <span class="sm:hidden">· {{ countryFlag(stock.countryCode) }}</span>
+                </p>
+              </td>
+              <td class="hidden px-4 py-3 sm:table-cell sm:px-6 sm:py-4">
+                <div class="flex items-center gap-2">
+                  <span class="text-lg">{{ countryFlag(stock.countryCode) }}</span>
+                  <span class="text-sm text-gray-700 dark:text-gray-300">{{ stock.country }}</span>
+                </div>
+              </td>
+              <td class="px-4 py-3 sm:px-6 sm:py-4">
+                <span class="text-base font-bold sm:text-lg" :class="yieldColor(stock)">
+                  {{ stock.dividendYield.toFixed(1) }}%
                 </span>
-                <span
-                  v-if="inflationStore.beatsInflation(stock.countryCode, stock.dividendYield)"
-                  class="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400"
-                >
-                  <FontAwesomeIcon icon="trophy" />
-                  {{ t('dividends.beatsInflation') }}
+              </td>
+              <td class="hidden px-4 py-3 md:table-cell md:px-6 md:py-4">
+                <span class="rounded-full border border-gray-200 px-2.5 py-1 text-xs text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                  {{ stock.sector }}
                 </span>
-              </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+              </td>
+              <td class="hidden px-4 py-3 text-sm text-gray-500 dark:text-gray-400 lg:table-cell lg:px-6 lg:py-4">
+                {{ stock.exchange }}
+              </td>
+              <td class="px-4 py-3 sm:px-6 sm:py-4">
+                <div class="flex flex-col gap-1">
+                  <span
+                    v-if="stock.dividendYield > depositRate"
+                    class="flex items-center gap-1 text-xs text-cyan-600 dark:text-cyan-400"
+                  >
+                    <FontAwesomeIcon icon="check" />
+                    <span class="hidden sm:inline">{{ t('dividends.beatsEcb') }}</span>
+                    <span class="sm:hidden">ECB</span>
+                  </span>
+                  <span
+                    v-if="inflationStore.beatsInflation(stock.countryCode, stock.dividendYield)"
+                    class="flex items-center gap-1 text-xs text-emerald-600 dark:text-emerald-400"
+                  >
+                    <FontAwesomeIcon icon="trophy" />
+                    <span class="hidden sm:inline">{{ t('dividends.beatsInflation') }}</span>
+                    <span class="sm:hidden">Inflation</span>
+                  </span>
+                </div>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <div
         v-if="filtered.length === 0"

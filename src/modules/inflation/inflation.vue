@@ -48,7 +48,7 @@ function countryFlag(code: string): string {
 </script>
 
 <template>
-  <div class="p-8">
+  <div class="p-4 pt-16 sm:px-6 sm:pb-6 lg:p-8">
     <!-- Header -->
     <div class="mb-8">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('inflation.title') }}</h1>
@@ -59,7 +59,7 @@ function countryFlag(code: string): string {
     </div>
 
     <!-- Controls -->
-    <div class="mb-6 flex flex-wrap items-center gap-3">
+    <div class="mb-6 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center">
       <div class="relative">
         <FontAwesomeIcon
           icon="magnifying-glass"
@@ -69,10 +69,10 @@ function countryFlag(code: string): string {
           v-model="search"
           type="text"
           :placeholder="t('inflation.searchPlaceholder')"
-          class="rounded-xl border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-violet-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:placeholder-gray-500"
+          class="w-full rounded-xl border border-gray-300 bg-white py-2 pl-9 pr-4 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-violet-500 dark:border-gray-700 dark:bg-gray-900 dark:text-white dark:placeholder-gray-500 sm:w-auto"
         />
       </div>
-      <div class="flex gap-2">
+      <div class="flex flex-wrap gap-2">
         <button
           v-for="f in filters"
           :key="f"
@@ -108,75 +108,85 @@ function countryFlag(code: string): string {
       v-else
       class="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
     >
-      <table class="w-full">
-        <thead>
-          <tr class="border-b border-gray-200 dark:border-gray-800">
-            <th
-              class="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500"
+      <div class="overflow-x-auto">
+        <table class="w-full min-w-[400px]">
+          <thead>
+            <tr class="border-b border-gray-200 dark:border-gray-800">
+              <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 sm:px-6 sm:py-4">
+                {{ t('inflation.country') }}
+              </th>
+              <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 sm:px-6 sm:py-4">
+                {{ t('inflation.rate') }}
+              </th>
+              <th class="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 sm:table-cell sm:px-6 sm:py-4">
+                {{ t('inflation.trend') }}
+              </th>
+              <th class="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 sm:table-cell sm:px-6 sm:py-4">
+                {{ t('inflation.vsEcb') }}
+              </th>
+              <th class="hidden px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 md:table-cell md:px-6 md:py-4">
+                {{ t('inflation.date') }}
+              </th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+            <tr
+              v-for="country in filtered"
+              :key="country.countryCode"
+              class="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+              @click="router.push('/inflation/' + country.countryCode.toLowerCase())"
             >
-              {{ t('inflation.country') }}
-            </th>
-            <th
-              class="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500"
-            >
-              {{ t('inflation.rate') }}
-            </th>
-            <th
-              class="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500"
-            >
-              {{ t('inflation.trend') }}
-            </th>
-            <th
-              class="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500"
-            >
-              {{ t('inflation.vsEcb') }}
-            </th>
-            <th
-              class="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500"
-            >
-              {{ t('inflation.date') }}
-            </th>
-          </tr>
-        </thead>
-        <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-          <tr
-            v-for="country in filtered"
-            :key="country.countryCode"
-            class="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
-            @click="router.push('/inflation/' + country.countryCode.toLowerCase())"
-          >
-            <td class="px-6 py-4">
-              <div class="flex items-center gap-3">
-                <span class="text-xl">{{ countryFlag(country.countryCode) }}</span>
-                <span class="text-sm font-medium text-gray-900 dark:text-white">{{ country.country }}</span>
-              </div>
-            </td>
-            <td class="px-6 py-4">
-              <span
-                class="rounded-full border px-2.5 py-1 text-sm font-bold"
-                :class="rateBadgeClass(country.rate)"
-              >
-                {{ country.rate.toFixed(1) }}%
-              </span>
-            </td>
-            <td class="px-6 py-4">
-              <FontAwesomeIcon
-                :icon="country.trend === 'up' ? 'arrow-up' : country.trend === 'down' ? 'arrow-down' : 'minus'"
-                :class="country.trend === 'up' ? 'text-red-500' : 'text-emerald-500'"
-              />
-            </td>
-            <td class="px-6 py-4">
-              <span
-                :class="country.vsEcb > 0 ? 'text-red-500 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'"
-                class="text-sm font-medium"
-              >
-                {{ country.vsEcb > 0 ? '+' : '' }}{{ country.vsEcb }}%
-              </span>
-            </td>
-            <td class="px-6 py-4 text-sm text-gray-400 dark:text-gray-500">{{ country.date }}</td>
-          </tr>
-        </tbody>
-      </table>
+              <td class="px-4 py-3 sm:px-6 sm:py-4">
+                <div class="flex items-center gap-2 sm:gap-3">
+                  <span class="text-lg sm:text-xl">{{ countryFlag(country.countryCode) }}</span>
+                  <div>
+                    <span class="text-sm font-medium text-gray-900 dark:text-white">{{ country.country }}</span>
+                    <!-- show trend inline on mobile -->
+                    <div class="mt-0.5 flex items-center gap-1 sm:hidden">
+                      <FontAwesomeIcon
+                        :icon="country.trend === 'up' ? 'arrow-up' : country.trend === 'down' ? 'arrow-down' : 'minus'"
+                        :class="country.trend === 'up' ? 'text-red-500' : 'text-emerald-500'"
+                        class="text-[10px]"
+                      />
+                      <span
+                        class="text-xs font-medium"
+                        :class="country.vsEcb > 0 ? 'text-red-500 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'"
+                      >
+                        vs ECB {{ country.vsEcb > 0 ? '+' : '' }}{{ country.vsEcb }}%
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </td>
+              <td class="px-4 py-3 sm:px-6 sm:py-4">
+                <span
+                  class="rounded-full border px-2.5 py-1 text-sm font-bold"
+                  :class="rateBadgeClass(country.rate)"
+                >
+                  {{ country.rate.toFixed(1) }}%
+                </span>
+              </td>
+              <td class="hidden px-4 py-3 sm:table-cell sm:px-6 sm:py-4">
+                <FontAwesomeIcon
+                  :icon="country.trend === 'up' ? 'arrow-up' : country.trend === 'down' ? 'arrow-down' : 'minus'"
+                  :class="country.trend === 'up' ? 'text-red-500' : 'text-emerald-500'"
+                />
+              </td>
+              <td class="hidden px-4 py-3 sm:table-cell sm:px-6 sm:py-4">
+                <span
+                  :class="country.vsEcb > 0 ? 'text-red-500 dark:text-red-400' : 'text-emerald-600 dark:text-emerald-400'"
+                  class="text-sm font-medium"
+                >
+                  {{ country.vsEcb > 0 ? '+' : '' }}{{ country.vsEcb }}%
+                </span>
+              </td>
+              <td class="hidden px-4 py-3 text-sm text-gray-400 dark:text-gray-500 md:table-cell md:px-6 md:py-4">
+                {{ country.date }}
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
 
       <div v-if="filtered.length === 0" class="py-12 text-center text-sm text-gray-400 dark:text-gray-500">
         {{ t('inflation.noResults') }}

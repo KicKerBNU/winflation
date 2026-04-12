@@ -158,7 +158,7 @@ onBeforeUnmount(() => {
 </script>
 
 <template>
-  <div class="p-8">
+  <div class="p-4 pt-16 sm:px-6 sm:pb-6 lg:p-8">
     <!-- Back button + header -->
     <div class="mb-8">
       <button

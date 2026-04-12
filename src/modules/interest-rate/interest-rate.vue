@@ -28,7 +28,7 @@ const rateBgColors: Record<string, string> = {
 </script>
 
 <template>
-  <div class="p-8">
+  <div class="p-4 pt-16 sm:px-6 sm:pb-6 lg:p-8">
     <!-- Header -->
     <div class="mb-8">
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('interestRate.title') }}</h1>
@@ -77,44 +77,42 @@ const rateBgColors: Record<string, string> = {
       <div
         class="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
       >
-        <table class="w-full">
-          <thead>
-            <tr class="border-b border-gray-200 dark:border-gray-800">
-              <th
-                class="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500"
+        <div class="overflow-x-auto">
+          <table class="w-full min-w-[320px]">
+            <thead>
+              <tr class="border-b border-gray-200 dark:border-gray-800">
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 sm:px-6 sm:py-4">
+                  {{ t('interestRate.rateType') }}
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 sm:px-6 sm:py-4">
+                  {{ t('interestRate.value') }}
+                </th>
+                <th class="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500 sm:px-6 sm:py-4">
+                  {{ t('interestRate.effectiveDate') }}
+                </th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
+              <tr
+                v-for="rate in store.rates"
+                :key="rate.type"
+                class="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
               >
-                {{ t('interestRate.rateType') }}
-              </th>
-              <th
-                class="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500"
-              >
-                {{ t('interestRate.value') }}
-              </th>
-              <th
-                class="px-6 py-4 text-left text-xs font-medium uppercase tracking-wider text-gray-400 dark:text-gray-500"
-              >
-                {{ t('interestRate.effectiveDate') }}
-              </th>
-            </tr>
-          </thead>
-          <tbody class="divide-y divide-gray-100 dark:divide-gray-800">
-            <tr
-              v-for="rate in store.rates"
-              :key="rate.type"
-              class="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
-            >
-              <td class="px-6 py-4 text-sm font-medium text-gray-900 dark:text-white">
-                {{ t(rateLabels[rate.type]) }}
-              </td>
-              <td class="px-6 py-4">
-                <span class="text-lg font-bold" :class="rateColors[rate.type]">
-                  {{ rate.rate.toFixed(2) }}%
-                </span>
-              </td>
-              <td class="px-6 py-4 text-sm text-gray-500 dark:text-gray-400">{{ rate.effectiveDate }}</td>
-            </tr>
-          </tbody>
-        </table>
+                <td class="px-4 py-3 text-sm font-medium text-gray-900 dark:text-white sm:px-6 sm:py-4">
+                  {{ t(rateLabels[rate.type]) }}
+                </td>
+                <td class="px-4 py-3 sm:px-6 sm:py-4">
+                  <span class="text-lg font-bold" :class="rateColors[rate.type]">
+                    {{ rate.rate.toFixed(2) }}%
+                  </span>
+                </td>
+                <td class="px-4 py-3 text-sm text-gray-500 dark:text-gray-400 sm:px-6 sm:py-4">
+                  {{ rate.effectiveDate }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </div>
 
       <!-- Info card -->
