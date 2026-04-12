@@ -1,12 +1,14 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue'
 import { useI18n } from 'vue-i18n'
+import { useRouter } from 'vue-router'
 import { useDividendsStore } from './store/dividends.store'
 import { useInterestRateStore } from '@/modules/interest-rate/store/interest-rate.store'
 import { useInflationStore } from '@/modules/inflation/store/inflation.store'
 import type { DividendStock } from './domain/dividends.types'
 
 const { t } = useI18n()
+const router = useRouter()
 const store = useDividendsStore()
 const rateStore = useInterestRateStore()
 const inflationStore = useInflationStore()
@@ -39,6 +41,10 @@ function countryFlag(code: string): string {
     .split('')
     .map((c) => String.fromCodePoint(0x1f1e6 - 65 + c.charCodeAt(0)))
     .join('')
+}
+
+function goToCompany(ticker: string) {
+  router.push(`/dividends/${ticker}`)
 }
 
 function yieldColor(stock: DividendStock): string {
@@ -93,7 +99,7 @@ function yieldColor(stock: DividendStock): string {
         <button
           v-for="f in filters"
           :key="f"
-          class="rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+          class="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium transition-colors"
           :class="
             activeFilter === f
               ? 'bg-violet-600 text-white'
@@ -106,8 +112,23 @@ function yieldColor(stock: DividendStock): string {
       </div>
     </div>
 
+    <!-- Loading -->
+    <div v-if="store.isLoading" class="py-16 text-center text-sm text-gray-400 dark:text-gray-500">
+      <FontAwesomeIcon icon="circle-notch" spin class="mr-2" />
+      {{ t('dividends.loading') }}
+    </div>
+
+    <!-- Error -->
+    <div
+      v-else-if="store.error"
+      class="rounded-2xl border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-600 dark:border-red-800/40 dark:bg-red-900/20 dark:text-red-400"
+    >
+      {{ store.error }}
+    </div>
+
     <!-- Table -->
     <div
+      v-else
       class="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
     >
       <table class="w-full">
@@ -149,7 +170,8 @@ function yieldColor(stock: DividendStock): string {
           <tr
             v-for="stock in filtered"
             :key="stock.ticker"
-            class="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+            class="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+            @click="goToCompany(stock.ticker)"
           >
             <td class="px-6 py-4">
               <p class="text-sm font-medium text-gray-900 dark:text-white">{{ stock.company }}</p>

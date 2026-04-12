@@ -11,7 +11,30 @@
       "Bash(curl -s 'https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_manr?format=JSON&freq=M&unit=RCH_A&coicop=CP00&geo=PT&lastTimePeriod=4' -H 'Cache-Control: no-cache' -H 'Pragma: no-cache')",
       "Bash(curl -s 'https://ec.europa.eu/eurostat/api/dissemination/statistics/1.0/data/prc_hicp_manr?format=JSON&freq=M&unit=RCH_A&coicop=CP00&geo=PT&lastTimePeriod=2' -H 'Accept: application/json')",
       "Bash(curl -s \"https://ec.europa.eu/eurostat/api/dissemination/statistics/2.0/data/prc_hicp_manr?format=JSON&freq=M&unit=RCH_A&coicop=CP00&geo=PT&lastTimePeriod=2\")",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(ls -la /Users/evertonbuzzi/Dev/winflation.eu/.env*)",
+      "Bash(curl -s \"https://financialmodelingprep.com/api/v3/profile/ISP.MI,ENGI.PA,VOW3.DE?apikey=demo\")",
+      "Bash(python3 -m json.tool)",
+      "Bash(curl -s 'https://query1.finance.yahoo.com/v10/finance/quoteSummary/MBG.DE?modules=summaryDetail,price' -H 'User-Agent: Mozilla/5.0')",
+      "Bash(curl -s https://query1.finance.yahoo.com/v8/finance/chart/MBG.DE -H 'User-Agent: Mozilla/5.0')",
+      "Bash(curl -s \"https://www.alphavantage.co/query?function=OVERVIEW&symbol=MBG.DE&apikey=demo\")",
+      "Bash(curl -s \"https://stooq.com/q/l/?s=mbg.de&f=sd2t2ohlcv&h&e=csv\" -H \"User-Agent: Mozilla/5.0\")",
+      "Bash(curl -s 'https://query1.finance.yahoo.com/v7/finance/quote?symbols=MBG.DE' -H 'User-Agent: Mozilla/5.0')",
+      "Bash(curl -s 'https://eodhd.com/api/real-time/MBG.XETRA?api_token=demo&fmt=json' -H 'User-Agent: Mozilla/5.0')",
+      "Bash(curl -s \"https://eodhd.com/api/fundamentals/MBG.XETRA?api_token=demo&filter=Highlights::DividendYield,Highlights::DividendShare&fmt=json\")",
+      "Bash(curl -s \"https://api.twelvedata.com/quote?symbol=MBG.DE&apikey=demo\")",
+      "Bash(curl -s \"https://query1.finance.yahoo.com/v1/test/getcrumb\" -H \"User-Agent: Mozilla/5.0\" -c /tmp/yf_cookies.txt)",
+      "Bash(curl -s -c /tmp/yf_cookies.txt -b /tmp/yf_cookies.txt https://fc.yahoo.com -H 'User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36' -o /dev/null -w '%{http_code}')",
+      "Bash(curl -s -c /tmp/yf_cookies.txt -b /tmp/yf_cookies.txt https://query1.finance.yahoo.com/v1/test/getcrumb -H 'User-Agent: Mozilla/5.0 \\(Macintosh; Intel Mac OS X 10_15_7\\) AppleWebKit/537.36')",
+      "Bash(python3 -c \"import json,sys; d=json.load\\(sys.stdin\\); print\\(json.dumps\\(d, indent=2\\)\\)\")",
+      "Bash(python3 -c \" import json, sys d = json.load\\(sys.stdin\\) print\\(json.dumps\\(d, indent=2\\)[:500]\\) \")",
+      "Bash(python3 -c \" import json, sys d = json.load\\(sys.stdin\\) print\\(json.dumps\\(d, indent=2\\)[:800]\\) \")",
+      "Read(//private/tmp/**)",
+      "Bash(curl -s 'https://corsproxy.io/?https://query1.finance.yahoo.com/v10/finance/quoteSummary/MBG.DE%3Fmodules%3DsummaryDetail%26crumb%3DA3%2Fc4y3cngy' -H 'Cookie: __CMDSUB_OUTPUT__')",
+      "Bash(awk '{print $6\"=\"$7}')",
+      "WebFetch(domain:twelvedata.com)",
+      "Bash(curl -s \"https://eodhd.com/api/real-time/MBG.XETRA?api_token=demo&fmt=json\")",
+      "Bash(npx tsc:*)"
     ]
   }
 }

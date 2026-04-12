@@ -27,7 +27,7 @@ const themeStore = useThemeStore()
 const countryCode = computed(() => (route.params.countryCode as string).toUpperCase())
 const countryName = ref('')
 const points = ref<InflationDataPoint[]>([])
-const isLoading = ref(false)
+const isLoading = ref(true)
 const error = ref<string | null>(null)
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
@@ -162,7 +162,7 @@ onBeforeUnmount(() => {
     <!-- Back button + header -->
     <div class="mb-8">
       <button
-        class="mb-4 flex items-center gap-2 text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+        class="mb-4 flex cursor-pointer items-center gap-2 text-sm text-gray-500 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
         @click="router.push('/inflation')"
       >
         <FontAwesomeIcon icon="arrow-left" />
@@ -182,10 +182,23 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <!-- Loading -->
-    <div v-if="isLoading" class="py-16 text-center text-sm text-gray-400 dark:text-gray-500">
-      <FontAwesomeIcon icon="circle-notch" spin class="mr-2" />
-      {{ t('inflationCountry.loading') }}
+    <!-- Skeleton -->
+    <div v-if="isLoading">
+      <div class="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-4">
+        <div
+          v-for="i in 4"
+          :key="i"
+          class="rounded-2xl border border-gray-200 bg-white p-5 dark:border-gray-800 dark:bg-gray-900"
+        >
+          <div class="mb-2 h-3 w-16 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+          <div class="mb-1.5 h-7 w-20 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+          <div class="h-3 w-12 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+        </div>
+      </div>
+      <div class="overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
+        <div class="mb-4 h-4 w-56 animate-pulse rounded bg-gray-200 dark:bg-gray-700" />
+        <div class="h-72 animate-pulse rounded-xl bg-gray-100 dark:bg-gray-800" />
+      </div>
     </div>
 
     <!-- Error -->

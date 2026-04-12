@@ -6,4 +6,9 @@ export const dividendsRoutes: RouteRecordRaw[] = [
     name: 'dividends',
     component: () => import('./dividends.vue'),
   },
+  {
+    path: '/dividends/:ticker',
+    name: 'dividend-company',
+    component: () => import('./dividend-company.vue'),
+  },
 ]

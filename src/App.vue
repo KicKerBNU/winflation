@@ -33,7 +33,7 @@ const navItems = [
           v-for="item in navItems"
           :key="item.to"
           :to="item.to"
-          class="flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
+          class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
           :class="
             route.path === item.to
               ? 'bg-violet-600 text-white'
@@ -48,7 +48,7 @@ const navItems = [
       <!-- Theme toggle + footer -->
       <div class="border-t border-gray-200 px-3 py-4 dark:border-gray-800">
         <button
-          class="flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
+          class="flex w-full cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-white"
           @click="themeStore.toggle()"
         >
           <FontAwesomeIcon :icon="themeStore.isDark ? 'sun' : 'moon'" class="w-4" />

@@ -36,9 +36,17 @@ const rateBgColors: Record<string, string> = {
     </div>
 
     <!-- Loading -->
-    <div v-if="store.isLoading" class="flex items-center gap-3 text-gray-500 dark:text-gray-400">
-      <FontAwesomeIcon icon="circle-notch" spin />
-      <span class="text-sm">Loading...</span>
+    <div v-if="store.isLoading" class="py-16 text-center text-sm text-gray-400 dark:text-gray-500">
+      <FontAwesomeIcon icon="circle-notch" spin class="mr-2" />
+      {{ t('interestRate.loading') }}
+    </div>
+
+    <!-- Error -->
+    <div
+      v-else-if="store.error"
+      class="rounded-2xl border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-600 dark:border-red-800/40 dark:bg-red-900/20 dark:text-red-400"
+    >
+      {{ store.error }}
     </div>
 
     <template v-else>

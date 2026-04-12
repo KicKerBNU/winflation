@@ -98,7 +98,7 @@ function countryFlag(code: string): string {
         <div class="mb-4 flex items-center justify-between">
           <h2 class="font-semibold text-gray-900 dark:text-white">{{ t('dashboard.topOpportunities') }}</h2>
           <button
-            class="text-xs text-violet-600 hover:text-violet-500 dark:text-violet-400 dark:hover:text-violet-300"
+            class="cursor-pointer text-xs text-violet-600 hover:text-violet-500 dark:text-violet-400 dark:hover:text-violet-300"
             @click="router.push('/dividends')"
           >
             {{ t('dashboard.viewAll') }} →
@@ -129,7 +129,7 @@ function countryFlag(code: string): string {
         <div class="mb-4 flex items-center justify-between">
           <h2 class="font-semibold text-gray-900 dark:text-white">{{ t('dashboard.highestInflation') }}</h2>
           <button
-            class="text-xs text-violet-600 hover:text-violet-500 dark:text-violet-400 dark:hover:text-violet-300"
+            class="cursor-pointer text-xs text-violet-600 hover:text-violet-500 dark:text-violet-400 dark:hover:text-violet-300"
             @click="router.push('/inflation')"
           >
             {{ t('dashboard.viewAll') }} →

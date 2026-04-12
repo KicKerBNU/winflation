@@ -1,26 +1,110 @@
-import type { DividendStock } from '../domain/dividends.types'
+import type { DividendStock, CompanyDetail } from '../domain/dividends.types'
 
-// TODO: replace with real financial data API (e.g. Financial Modeling Prep, Alpha Vantage)
-const MOCK_STOCKS: DividendStock[] = [
-  { ticker: 'ISP.MI', company: 'Intesa Sanpaolo', country: 'Italy', countryCode: 'IT', dividendYield: 9.8, sector: 'Banking', currency: 'EUR', exchange: 'Borsa Italiana' },
-  { ticker: 'ENGI.PA', company: 'Engie SA', country: 'France', countryCode: 'FR', dividendYield: 9.0, sector: 'Utilities', currency: 'EUR', exchange: 'Euronext Paris' },
-  { ticker: 'REP.MC', company: 'Repsol SA', country: 'Spain', countryCode: 'ES', dividendYield: 8.3, sector: 'Energy', currency: 'EUR', exchange: 'BME' },
-  { ticker: 'VOW3.DE', company: 'Volkswagen AG', country: 'Germany', countryCode: 'DE', dividendYield: 8.5, sector: 'Automotive', currency: 'EUR', exchange: 'XETRA' },
-  { ticker: 'MBG.DE', company: 'Mercedes-Benz Group', country: 'Germany', countryCode: 'DE', dividendYield: 8.2, sector: 'Automotive', currency: 'EUR', exchange: 'XETRA' },
-  { ticker: 'INGA.AS', company: 'ING Groep NV', country: 'Netherlands', countryCode: 'NL', dividendYield: 7.8, sector: 'Banking', currency: 'EUR', exchange: 'Euronext Amsterdam' },
-  { ticker: 'ORA.PA', company: 'Orange SA', country: 'France', countryCode: 'FR', dividendYield: 7.2, sector: 'Telecom', currency: 'EUR', exchange: 'Euronext Paris' },
-  { ticker: 'TEF.MC', company: 'Telefonica SA', country: 'Spain', countryCode: 'ES', dividendYield: 6.9, sector: 'Telecom', currency: 'EUR', exchange: 'BME' },
-  { ticker: 'ENI.MI', company: 'Eni SpA', country: 'Italy', countryCode: 'IT', dividendYield: 6.4, sector: 'Energy', currency: 'EUR', exchange: 'Borsa Italiana' },
-  { ticker: 'MAP.MC', company: 'MAPFRE SA', country: 'Spain', countryCode: 'ES', dividendYield: 6.5, sector: 'Insurance', currency: 'EUR', exchange: 'BME' },
-  { ticker: 'CS.PA', company: 'AXA SA', country: 'France', countryCode: 'FR', dividendYield: 6.8, sector: 'Insurance', currency: 'EUR', exchange: 'Euronext Paris' },
-  { ticker: 'ENEL.MI', company: 'Enel SpA', country: 'Italy', countryCode: 'IT', dividendYield: 6.1, sector: 'Utilities', currency: 'EUR', exchange: 'Borsa Italiana' },
-  { ticker: 'BAS.DE', company: 'BASF SE', country: 'Germany', countryCode: 'DE', dividendYield: 6.8, sector: 'Chemicals', currency: 'EUR', exchange: 'XETRA' },
-  { ticker: 'ALV.DE', company: 'Allianz SE', country: 'Germany', countryCode: 'DE', dividendYield: 5.2, sector: 'Insurance', currency: 'EUR', exchange: 'XETRA' },
-  { ticker: 'RAND.AS', company: 'Randstad NV', country: 'Netherlands', countryCode: 'NL', dividendYield: 5.9, sector: 'Professional Services', currency: 'EUR', exchange: 'Euronext Amsterdam' },
+const FMP_BASE = 'https://financialmodelingprep.com/stable'
+
+// Tickers to track — extend this list to add more EU dividend stocks
+const TICKERS = [
+  'ISP.MI', 'ENGI.PA', 'REP.MC', 'VOW3.DE', 'MBG.DE',
+  'INGA.AS', 'ORA.PA', 'TEF.MC', 'ENI.MI', 'MAP.MC',
+  'CS.PA', 'ENEL.MI', 'BAS.DE', 'ALV.DE', 'RAND.AS',
 ]
 
+const COUNTRY_NAMES: Record<string, string> = {
+  AT: 'Austria', BE: 'Belgium', BG: 'Bulgaria', CY: 'Cyprus', CZ: 'Czech Republic',
+  DE: 'Germany', DK: 'Denmark', EE: 'Estonia', ES: 'Spain', FI: 'Finland',
+  FR: 'France', GR: 'Greece', HR: 'Croatia', HU: 'Hungary', IE: 'Ireland',
+  IT: 'Italy', LT: 'Lithuania', LU: 'Luxembourg', LV: 'Latvia', MT: 'Malta',
+  NL: 'Netherlands', PL: 'Poland', PT: 'Portugal', RO: 'Romania', SE: 'Sweden',
+  SI: 'Slovenia', SK: 'Slovakia', GB: 'United Kingdom', CH: 'Switzerland',
+  NO: 'Norway',
+}
+
+interface FmpProfile {
+  symbol: string
+  companyName: string
+  currency: string
+  exchangeFullName: string
+  exchange: string
+  sector: string
+  industry: string
+  country: string
+  price: number
+  lastDividend: number
+  change: number
+  changePercentage: number
+  marketCap: number
+  beta: number
+  volume: number
+  range: string
+  description: string
+  ceo: string
+  website: string
+  image: string
+}
+
+async function fetchProfile(ticker: string, apiKey: string): Promise<FmpProfile | null> {
+  const res = await fetch(`${FMP_BASE}/profile?symbol=${ticker}&apikey=${apiKey}`)
+  if (!res.ok) return null
+  const data: FmpProfile[] = await res.json()
+  return Array.isArray(data) && data.length > 0 ? data[0] : null
+}
+
+export async function fetchCompanyDetail(ticker: string): Promise<CompanyDetail> {
+  const apiKey = import.meta.env.VITE_FMP_API_KEY
+  const res = await fetch(`${FMP_BASE}/profile?symbol=${ticker}&apikey=${apiKey}`)
+  if (!res.ok) throw new Error(`Failed to fetch profile for ${ticker}`)
+  const data: FmpProfile[] = await res.json()
+  if (!Array.isArray(data) || data.length === 0) throw new Error(`No data found for ${ticker}`)
+  const p = data[0]
+  const parts = (p.range ?? '0-0').split('-').map(Number)
+  const rangeLow = parts[0] ?? 0
+  const rangeHigh = parts[1] ?? 0
+  return {
+    ticker: p.symbol,
+    company: p.companyName,
+    country: COUNTRY_NAMES[p.country] ?? p.country,
+    countryCode: p.country,
+    dividendYield: p.price > 0 && p.lastDividend > 0 ? +((p.lastDividend / p.price) * 100).toFixed(2) : 0,
+    annualDividend: p.lastDividend,
+    price: p.price,
+    priceChange: p.change,
+    priceChangePercent: p.changePercentage,
+    marketCap: p.marketCap,
+    beta: p.beta,
+    volume: p.volume,
+    rangeHigh,
+    rangeLow,
+    sector: p.sector,
+    industry: p.industry,
+    exchange: p.exchangeFullName,
+    currency: p.currency,
+    description: p.description,
+    ceo: p.ceo,
+    website: p.website,
+    image: p.image,
+  }
+}
+
 export async function fetchDividendStocks(): Promise<DividendStock[]> {
-  // const { data } = await http.get<DividendStock[]>('/stocks/dividends')
-  // return data
-  return Promise.resolve(MOCK_STOCKS)
+  const apiKey = import.meta.env.VITE_FMP_API_KEY
+
+  if (!apiKey || apiKey === 'your_api_key_here') {
+    throw new Error('FMP API key is not configured. Add VITE_FMP_API_KEY to .env.local')
+  }
+
+  const profiles = await Promise.all(TICKERS.map((t) => fetchProfile(t, apiKey)))
+
+  return profiles
+    .filter((p): p is FmpProfile => p !== null && p.price > 0 && p.lastDividend > 0)
+    .map((p) => ({
+      ticker: p.symbol,
+      company: p.companyName,
+      country: COUNTRY_NAMES[p.country] ?? p.country,
+      countryCode: p.country,
+      dividendYield: +((p.lastDividend / p.price) * 100).toFixed(2),
+      sector: p.sector,
+      currency: p.currency,
+      exchange: p.exchangeFullName,
+    }))
+    .sort((a, b) => b.dividendYield - a.dividendYield)
 }

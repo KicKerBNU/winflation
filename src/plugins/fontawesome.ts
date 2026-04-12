@@ -8,6 +8,7 @@ import {
   faArrowUp,
   faArrowDown,
   faArrowLeft,
+  faArrowUpRightFromSquare,
   faMinus,
   faMagnifyingGlass,
   faCheck,
@@ -17,6 +18,10 @@ import {
   faEarthEurope,
   faSun,
   faMoon,
+  faBuilding,
+  faUser,
+  faThumbsUp,
+  faThumbsDown,
 } from '@fortawesome/free-solid-svg-icons'
 import type { App } from 'vue'
 
@@ -28,6 +33,7 @@ library.add(
   faArrowUp,
   faArrowDown,
   faArrowLeft,
+  faArrowUpRightFromSquare,
   faMinus,
   faMagnifyingGlass,
   faCheck,
@@ -37,6 +43,10 @@ library.add(
   faEarthEurope,
   faSun,
   faMoon,
+  faBuilding,
+  faUser,
+  faThumbsUp,
+  faThumbsDown,
 )
 
 export function registerFontAwesome(app: App) {

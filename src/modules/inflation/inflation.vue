@@ -76,7 +76,7 @@ function countryFlag(code: string): string {
         <button
           v-for="f in filters"
           :key="f"
-          class="rounded-lg px-3 py-2 text-sm font-medium transition-colors"
+          class="cursor-pointer rounded-lg px-3 py-2 text-sm font-medium transition-colors"
           :class="
             activeFilter === f
               ? 'bg-violet-600 text-white'
@@ -142,7 +142,8 @@ function countryFlag(code: string): string {
           <tr
             v-for="country in filtered"
             :key="country.countryCode"
-            class="transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+            class="cursor-pointer transition-colors hover:bg-gray-50 dark:hover:bg-gray-800/50"
+            @click="router.push('/inflation/' + country.countryCode.toLowerCase())"
           >
             <td class="px-6 py-4">
               <div class="flex items-center gap-3">
