@@ -97,7 +97,7 @@ function buildChart() {
           borderWidth: 1,
           padding: 10,
           callbacks: {
-            label: (ctx) => ` ${ctx.parsed.y.toFixed(2)}%`,
+            label: (ctx) => ` ${(ctx.parsed.y ?? 0).toFixed(2)}%`,
           },
         },
       },

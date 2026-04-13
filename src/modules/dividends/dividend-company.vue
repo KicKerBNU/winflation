@@ -35,33 +35,38 @@ const localInflation = computed(() => {
 const CYCLICAL_SECTORS = ['Consumer Cyclical', 'Basic Materials', 'Energy', 'Real Estate']
 const STABLE_SECTORS = ['Utilities', 'Financial Services', 'Healthcare', 'Consumer Defensive']
 
-const proScenario = computed<{ key: string; params: Record<string, string | number> }>(() => {
+type Scenario = { key: string; params: Record<string, string | number> }
+function s(key: string, params: Record<string, string | number> = {}): Scenario {
+  return { key, params }
+}
+
+const proScenario = computed<Scenario>(() => {
   const c = company.value
-  if (!c) return { key: 'established', params: {} }
+  if (!c) return s('established')
   const inf = localInflation.value
   if (inf !== null && c.dividendYield > inf)
-    return { key: 'beatsInflation', params: { yield: c.dividendYield.toFixed(1), inflation: inf.toFixed(1) } }
+    return s('beatsInflation', { yield: c.dividendYield.toFixed(1), inflation: inf.toFixed(1) })
   if (c.dividendYield > depositRate.value)
-    return { key: 'beatsEcb', params: { yield: c.dividendYield.toFixed(1), rate: depositRate.value.toFixed(2) } }
+    return s('beatsEcb', { yield: c.dividendYield.toFixed(1), rate: depositRate.value.toFixed(2) })
   if (STABLE_SECTORS.includes(c.sector))
-    return { key: 'stableSector', params: { sector: c.sector } }
+    return s('stableSector', { sector: c.sector })
   if (c.beta < 0.8)
-    return { key: 'lowBeta', params: { beta: c.beta.toFixed(1) } }
-  return { key: 'established', params: { cap: formatMarketCap(c.marketCap) } }
+    return s('lowBeta', { beta: c.beta.toFixed(1) })
+  return s('established', { cap: formatMarketCap(c.marketCap) })
 })
 
-const conScenario = computed<{ key: string; params: Record<string, string | number> }>(() => {
+const conScenario = computed<Scenario>(() => {
   const c = company.value
-  if (!c) return { key: 'concentration', params: {} }
+  if (!c) return s('concentration')
   if (c.dividendYield > 8)
-    return { key: 'highYield', params: { yield: c.dividendYield.toFixed(1) } }
+    return s('highYield', { yield: c.dividendYield.toFixed(1) })
   if (CYCLICAL_SECTORS.includes(c.sector))
-    return { key: 'cyclical', params: { sector: c.sector } }
+    return s('cyclical', { sector: c.sector })
   if (c.beta > 1.2)
-    return { key: 'highBeta', params: { beta: c.beta.toFixed(1) } }
+    return s('highBeta', { beta: c.beta.toFixed(1) })
   if (c.dividendYield < depositRate.value)
-    return { key: 'belowEcb', params: { rate: depositRate.value.toFixed(2) } }
-  return { key: 'concentration', params: {} }
+    return s('belowEcb', { rate: depositRate.value.toFixed(2) })
+  return s('concentration')
 })
 
 // ── Chart ──────────────────────────────────────────────────────────────────────
