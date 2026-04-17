@@ -1,17 +1,17 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAiRecommendationStore } from './store/ai-recommendation.store'
-import type { AiCompany, YearlyYield, CompanyStatus } from './domain/ai-recommendation.types'
+import type { AiCompanyCard, YearlyYield, CompanyStatus } from './domain/ai-recommendation.types'
 
 const { t } = useI18n()
 const store = useAiRecommendationStore()
 
-onMounted(() => store.init())
+store.init()
 
 const formattedDate = computed(() => {
-  if (!store.data?.generatedAt) return ''
-  return new Date(store.data.generatedAt).toLocaleDateString(undefined, {
+  if (!store.generatedAt) return ''
+  return new Date(store.generatedAt).toLocaleDateString(undefined, {
     day: 'numeric',
     month: 'short',
     year: 'numeric',
@@ -37,11 +37,12 @@ function formatMarketCap(n: number): string {
   return `€${n}`
 }
 
-function maxYield(company: AiCompany): number {
+function maxYield(company: AiCompanyCard): number {
+  if (!company.historicYields) return 1
   return Math.max(...company.historicYields.map((h) => h.yield), 0.1)
 }
 
-function barHeight(h: YearlyYield, company: AiCompany): string {
+function barHeight(h: YearlyYield, company: AiCompanyCard): string {
   return `${Math.max((h.yield / maxYield(company)) * 56, 4)}px`
 }
 
@@ -84,7 +85,7 @@ const statusConfig: Record<CompanyStatus, { label: string; icon: string; cardBor
         </div>
         <p class="ml-13 text-sm text-gray-500 dark:text-gray-400">{{ t('aiRecommendation.subtitle') }}</p>
       </div>
-      <div v-if="store.data" class="flex flex-col items-end gap-2">
+      <div v-if="store.hasData" class="flex flex-col items-end gap-2">
         <span class="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
           <FontAwesomeIcon icon="calendar" class="text-xs" />
           {{ t('aiRecommendation.updatedAt', { date: formattedDate }) }}
@@ -96,7 +97,7 @@ const statusConfig: Record<CompanyStatus, { label: string; icon: string; cardBor
       </div>
     </div>
 
-    <!-- Loading skeletons -->
+    <!-- Phase 1 loading skeletons (before any card arrives) -->
     <div v-if="store.isLoading" class="space-y-6">
       <div
         v-for="i in 10"
@@ -129,7 +130,7 @@ const statusConfig: Record<CompanyStatus, { label: string; icon: string; cardBor
 
     <!-- Empty state -->
     <div
-      v-else-if="!store.data"
+      v-else-if="!store.hasData"
       class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center dark:border-gray-700 dark:bg-gray-900"
     >
       <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-100 dark:bg-violet-900/30">
@@ -141,7 +142,7 @@ const statusConfig: Record<CompanyStatus, { label: string; icon: string; cardBor
     <!-- Company cards -->
     <div v-else class="space-y-6">
       <div
-        v-for="company in store.data.companies"
+        v-for="company in store.cards"
         :key="company.ticker"
         class="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
       >
@@ -238,7 +239,13 @@ const statusConfig: Record<CompanyStatus, { label: string; icon: string; cardBor
             <!-- Yield history bar chart -->
             <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
               <p class="mb-3 text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('aiRecommendation.yieldHistory') }}</p>
-              <div class="flex items-end gap-2">
+              <!-- Skeleton while loading -->
+              <div v-if="company.historicYields === null" class="animate-pulse flex items-end gap-2 h-16">
+                <div v-for="k in 5" :key="k" class="flex-1 rounded-t-sm bg-gray-200 dark:bg-gray-700"
+                  :style="{ height: `${20 + k * 8}px` }" />
+              </div>
+              <!-- Chart -->
+              <div v-else class="flex items-end gap-2">
                 <div
                   v-for="h in company.historicYields"
                   :key="h.year"
@@ -257,7 +264,15 @@ const statusConfig: Record<CompanyStatus, { label: string; icon: string; cardBor
             <!-- Dividends per year table -->
             <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
               <p class="mb-3 text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('aiRecommendation.dividendsPerYear') }}</p>
-              <div class="space-y-1.5">
+              <!-- Skeleton while loading -->
+              <div v-if="company.dividendsPerYear === null" class="animate-pulse space-y-2">
+                <div v-for="k in 5" :key="k" class="flex justify-between">
+                  <div class="h-3 w-10 rounded bg-gray-200 dark:bg-gray-700" />
+                  <div class="h-3 w-20 rounded bg-gray-200 dark:bg-gray-700" />
+                </div>
+              </div>
+              <!-- Table -->
+              <div v-else class="space-y-1.5">
                 <div
                   v-for="d in [...company.dividendsPerYear].reverse()"
                   :key="d.year"

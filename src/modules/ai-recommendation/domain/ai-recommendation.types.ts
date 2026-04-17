@@ -12,7 +12,7 @@ export interface YearlyDividend {
 
 export type CompanyStatus = 'bullish' | 'neutral' | 'bearish'
 
-export interface AiCompany {
+export interface AiCompanyBase {
   rank: number
   ticker: string
   company: string
@@ -27,14 +27,25 @@ export interface AiCompany {
   annualDividend: number
   marketCap: number
   priceChangePercent: number
-  historicYields: YearlyYield[]
-  dividendsPerYear: YearlyDividend[]
   status: CompanyStatus
   pro: string
   con: string
 }
 
-export interface AiRecommendationData {
-  generatedAt: string
-  companies: AiCompany[]
+export interface AiCompanyCard extends AiCompanyBase {
+  historicYields: YearlyYield[] | null
+  dividendsPerYear: YearlyDividend[] | null
 }
+
+export interface AiCompanyHistory {
+  historicYields: YearlyYield[]
+  dividendsPerYear: YearlyDividend[]
+}
+
+export interface AiPhase1Response {
+  generatedAt: string
+  companies: AiCompanyBase[]
+}
+
+/** @deprecated use AiCompanyCard */
+export type AiCompany = AiCompanyCard

@@ -1,21 +1,35 @@
 import { GoogleGenAI } from '@google/genai'
 import { getCache, setCache } from '@/services/localCache'
-import type { AiRecommendationData } from '../domain/ai-recommendation.types'
+import type { AiPhase1Response, AiCompanyHistory } from '../domain/ai-recommendation.types'
 
-const CACHE_KEY = 'ai-recommendation:latest'
+const PHASE1_CACHE_KEY = 'ai-recommendation:phase1:latest'
 
-export async function fetchAiRecommendations(): Promise<AiRecommendationData | null> {
-  const cached = getCache<AiRecommendationData>(CACHE_KEY)
-  if (cached) return cached
-
+async function gemini(prompt: string): Promise<string> {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY
   if (!apiKey) throw new Error('VITE_GEMINI_API_KEY is not configured')
-
   const ai = new GoogleGenAI({ apiKey })
+  let response
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      response = await ai.models.generateContent({ model: 'gemini-flash-latest', contents: prompt })
+      break
+    } catch (err: unknown) {
+      const isRateLimit = err instanceof Error && err.message.includes('429')
+      if (!isRateLimit || attempt === 3) throw err
+      await new Promise((r) => setTimeout(r, 2000 * 2 ** attempt))
+    }
+  }
+  const raw = response!.text ?? ''
+  return raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
+}
 
-  const prompt = `You are a financial analyst specializing in European dividend stocks. Based on your knowledge, select the top 10 EU-listed dividend stocks for long-term income investors, ranked by investment quality (yield sustainability, dividend growth track record, sector resilience, payout ratio health, and macroeconomic outlook).
+export async function fetchAiRecommendationsPhase1(): Promise<AiPhase1Response | null> {
+  const cached = getCache<AiPhase1Response>(PHASE1_CACHE_KEY)
+  if (cached) return cached
 
-Return ONLY a raw JSON object matching this exact structure — no markdown, no explanation:
+  const prompt = `You are a financial analyst specializing in European dividend stocks. Select the top 10 EU-listed dividend stocks for long-term income investors, ranked by investment quality (yield sustainability, dividend growth track record, sector resilience, payout ratio health, and macroeconomic outlook).
+
+Return ONLY a raw JSON object — no markdown, no explanation:
 {
   "generatedAt": "<today's ISO date>",
   "companies": [
@@ -34,12 +48,6 @@ Return ONLY a raw JSON object matching this exact structure — no markdown, no 
       "annualDividend": <annual dividend per share>,
       "marketCap": <market cap in full units>,
       "priceChangePercent": <estimated recent 1-day change %>,
-      "historicYields": [
-        { "year": <year>, "yield": <percentage>, "dividend": <per share amount> }
-      ],
-      "dividendsPerYear": [
-        { "year": <year>, "totalAmount": <total annual dividend per share>, "payments": <number of payments that year> }
-      ],
       "status": "<bullish|neutral|bearish>",
       "pro": "<one concise sentence — main investment strength>",
       "con": "<one concise sentence — main investment risk>"
@@ -49,29 +57,44 @@ Return ONLY a raw JSON object matching this exact structure — no markdown, no 
 
 Rules:
 - Exactly 10 companies, ranked 1–10
-- historicYields: exactly 5 entries for the last 5 calendar years
-- dividendsPerYear: exactly 5 entries for the last 5 calendar years
-- Only include EU-listed companies (Euronext, Xetra, BME, Borsa Italiana, etc.)`
+- Only EU-listed companies (Euronext, Xetra, BME, Borsa Italiana, etc.)`
 
-  let response
-  for (let attempt = 0; attempt < 4; attempt++) {
-    try {
-      response = await ai.models.generateContent({
-        model: 'gemini-flash-latest',
-        contents: prompt,
-      })
-      break
-    } catch (err: unknown) {
-      const isRateLimit = err instanceof Error && err.message.includes('429')
-      if (!isRateLimit || attempt === 3) throw err
-      await new Promise((r) => setTimeout(r, 2000 * 2 ** attempt))
-    }
-  }
+  const clean = await gemini(prompt)
+  const data: AiPhase1Response = JSON.parse(clean)
+  setCache(PHASE1_CACHE_KEY, data)
+  return data
+}
 
-  const raw = response!.text ?? ''
-  const clean = raw.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
-  const data: AiRecommendationData = JSON.parse(clean)
+export async function fetchCompanyHistory(
+  ticker: string,
+  company: string,
+  currency: string,
+): Promise<AiCompanyHistory | null> {
+  const now = new Date()
+  const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
+  const cacheKey = `ai-recommendation:history:${ticker}:${month}`
 
-  setCache(CACHE_KEY, data)
+  const cached = getCache<AiCompanyHistory>(cacheKey)
+  if (cached) return cached
+
+  const prompt = `You are a financial analyst. For ${company} (${ticker}), provide the dividend history for the last 5 complete calendar years.
+
+Return ONLY raw JSON — no markdown, no explanation:
+{
+  "historicYields": [
+    { "year": <year>, "yield": <annual dividend yield as percentage>, "dividend": <annual dividend per share in ${currency}> }
+  ],
+  "dividendsPerYear": [
+    { "year": <year>, "totalAmount": <total annual dividend per share in ${currency}>, "payments": <number of dividend payments that year> }
+  ]
+}
+
+Rules:
+- Exactly 5 entries in each array, for the last 5 complete calendar years (oldest to newest)
+- Use realistic historical data based on your knowledge`
+
+  const clean = await gemini(prompt)
+  const data: AiCompanyHistory = JSON.parse(clean)
+  setCache(cacheKey, data)
   return data
 }
