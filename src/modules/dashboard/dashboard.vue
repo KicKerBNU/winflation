@@ -108,7 +108,8 @@ function countryFlag(code: string): string {
           <div
             v-for="stock in topStocks"
             :key="stock.ticker"
-            class="flex items-center justify-between rounded-lg border border-gray-100 px-4 py-3 dark:border-gray-800"
+            class="flex cursor-pointer items-center justify-between rounded-lg border border-gray-100 px-4 py-3 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50"
+            @click="router.push(`/dividends/${stock.ticker}`)"
           >
             <div class="flex items-center gap-3">
               <span class="text-2xl">{{ countryFlag(stock.countryCode) }}</span>
@@ -139,7 +140,8 @@ function countryFlag(code: string): string {
           <div
             v-for="country in topInflation"
             :key="country.countryCode"
-            class="flex items-center justify-between rounded-lg border border-gray-100 px-4 py-3 dark:border-gray-800"
+            class="flex cursor-pointer items-center justify-between rounded-lg border border-gray-100 px-4 py-3 transition-colors hover:bg-gray-50 dark:border-gray-800 dark:hover:bg-gray-800/50"
+            @click="router.push(`/inflation/${country.countryCode.toLowerCase()}`)"
           >
             <div class="flex items-center gap-3">
               <span class="text-2xl">{{ countryFlag(country.countryCode) }}</span>
