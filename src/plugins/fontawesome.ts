@@ -4,6 +4,7 @@ import {
   faGaugeHigh,
   faPercent,
   faArrowTrendUp,
+  faArrowTrendDown,
   faCoins,
   faArrowUp,
   faArrowDown,
@@ -22,6 +23,8 @@ import {
   faUser,
   faThumbsUp,
   faThumbsDown,
+  faRobot,
+  faCalendar,
 } from '@fortawesome/free-solid-svg-icons'
 import type { App } from 'vue'
 
@@ -29,6 +32,7 @@ library.add(
   faGaugeHigh,
   faPercent,
   faArrowTrendUp,
+  faArrowTrendDown,
   faCoins,
   faArrowUp,
   faArrowDown,
@@ -47,6 +51,8 @@ library.add(
   faUser,
   faThumbsUp,
   faThumbsDown,
+  faRobot,
+  faCalendar,
 )
 
 export function registerFontAwesome(app: App) {

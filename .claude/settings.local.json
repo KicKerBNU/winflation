@@ -34,7 +34,14 @@
       "Bash(awk '{print $6\"=\"$7}')",
       "WebFetch(domain:twelvedata.com)",
       "Bash(curl -s \"https://eodhd.com/api/real-time/MBG.XETRA?api_token=demo&fmt=json\")",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "WebFetch(domain:site.financialmodelingprep.com)",
+      "WebFetch(domain:financialmodelingprep.com)",
+      "WebSearch",
+      "Bash(npm uninstall *)",
+      "Bash(npm list *)",
+      "WebFetch(domain:docs.cloud.google.com)",
+      "WebFetch(domain:github.com)"
     ]
   }
 }

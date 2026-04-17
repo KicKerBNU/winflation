@@ -1,0 +1,39 @@
+# Runs every day at 08:00 UTC and stores AI-generated dividend picks in Firestore.
+# Users visiting the page just read the cached Firestore document — zero AI tokens per visit.
+#
+# Required GitHub Secrets:
+#   GEMINI_API_KEY            — Google AI Studio free key (aistudio.google.com)
+#   FIREBASE_SERVICE_ACCOUNT  — JSON string of the Firebase Admin service account key
+#                               (Firebase Console → Project Settings → Service Accounts → Generate new private key)
+#
+# Required Firestore setup:
+#   Collection: ai-recommendations   Document: latest
+#   Security rule: allow read; (public read is enough — writes only from Admin SDK)
+
+name: Generate AI Dividend Recommendations
+
+on:
+  schedule:
+    - cron: '0 8 * * *'
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install script dependencies
+        working-directory: scripts
+        run: npm install
+
+      - name: Generate and store recommendations
+        working-directory: scripts
+        env:
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node generate-recommendations.mjs

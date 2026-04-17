@@ -1,4 +1,8 @@
 import type { DividendStock, CompanyDetail } from '../domain/dividends.types'
+import { getCache, setCache } from '@/services/localCache'
+
+const CACHE_KEY_LIST = 'dividends:list'
+const cacheKeyCompany = (ticker: string) => `dividends:company:${ticker}`
 
 const FMP_BASE = 'https://financialmodelingprep.com/stable'
 
@@ -50,6 +54,9 @@ async function fetchProfile(ticker: string, apiKey: string): Promise<FmpProfile 
 }
 
 export async function fetchCompanyDetail(ticker: string): Promise<CompanyDetail> {
+  const cached = getCache<CompanyDetail>(cacheKeyCompany(ticker))
+  if (cached) return cached
+
   const apiKey = import.meta.env.VITE_FMP_API_KEY
   const res = await fetch(`${FMP_BASE}/profile?symbol=${ticker}&apikey=${apiKey}`)
   if (!res.ok) throw new Error(`Failed to fetch profile for ${ticker}`)
@@ -59,7 +66,7 @@ export async function fetchCompanyDetail(ticker: string): Promise<CompanyDetail>
   const parts = (p.range ?? '0-0').split('-').map(Number)
   const rangeLow = parts[0] ?? 0
   const rangeHigh = parts[1] ?? 0
-  return {
+  const result: CompanyDetail = {
     ticker: p.symbol,
     company: p.companyName,
     country: COUNTRY_NAMES[p.country] ?? p.country,
@@ -83,9 +90,14 @@ export async function fetchCompanyDetail(ticker: string): Promise<CompanyDetail>
     website: p.website,
     image: p.image,
   }
+  setCache(cacheKeyCompany(ticker), result)
+  return result
 }
 
 export async function fetchDividendStocks(): Promise<DividendStock[]> {
+  const cached = getCache<DividendStock[]>(CACHE_KEY_LIST)
+  if (cached) return cached
+
   const apiKey = import.meta.env.VITE_FMP_API_KEY
 
   if (!apiKey || apiKey === 'your_api_key_here') {
@@ -94,7 +106,7 @@ export async function fetchDividendStocks(): Promise<DividendStock[]> {
 
   const profiles = await Promise.all(TICKERS.map((t) => fetchProfile(t, apiKey)))
 
-  return profiles
+  const result = profiles
     .filter((p): p is FmpProfile => p !== null && p.price > 0 && p.lastDividend > 0)
     .map((p) => ({
       ticker: p.symbol,
@@ -107,4 +119,7 @@ export async function fetchDividendStocks(): Promise<DividendStock[]> {
       exchange: p.exchangeFullName,
     }))
     .sort((a, b) => b.dividendYield - a.dividendYield)
+
+  setCache(CACHE_KEY_LIST, result)
+  return result
 }
