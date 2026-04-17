@@ -30,7 +30,7 @@ const stocksBeatingInflation = computed(
 )
 
 const topStocks = computed(() => dividendsStore.sortedByYield.slice(0, 5))
-const topInflation = computed(() => inflationStore.highestInflation)
+const topInflation = computed(() => inflationStore.lowestInflation)
 
 function countryFlag(code: string): string {
   return code
@@ -127,7 +127,7 @@ function countryFlag(code: string): string {
       <!-- Highest inflation countries -->
       <div class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
         <div class="mb-4 flex items-center justify-between">
-          <h2 class="font-semibold text-gray-900 dark:text-white">{{ t('dashboard.highestInflation') }}</h2>
+          <h2 class="font-semibold text-gray-900 dark:text-white">{{ t('dashboard.lowestInflation') }}</h2>
           <button
             class="cursor-pointer text-xs text-violet-600 hover:text-violet-500 dark:text-violet-400 dark:hover:text-violet-300"
             @click="router.push('/inflation')"
@@ -149,11 +149,20 @@ function countryFlag(code: string): string {
               </div>
             </div>
             <div class="flex items-center gap-2">
-              <FontAwesomeIcon
-                :icon="country.trend === 'up' ? 'arrow-up' : country.trend === 'down' ? 'arrow-down' : 'minus'"
-                :class="country.trend === 'up' ? 'text-red-500' : 'text-emerald-500'"
-                class="text-xs"
-              />
+              <span
+                class="flex items-center gap-1 rounded-full px-2 py-0.5 text-xs font-medium"
+                :class="country.trend === 'up'
+                  ? 'bg-red-100 text-red-600 dark:bg-red-900/30 dark:text-red-400'
+                  : country.trend === 'down'
+                    ? 'bg-emerald-100 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400'
+                    : 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400'"
+              >
+                <FontAwesomeIcon
+                  :icon="country.trend === 'up' ? 'arrow-up' : country.trend === 'down' ? 'arrow-down' : 'minus'"
+                  class="text-[10px]"
+                />
+                {{ country.trend === 'up' ? t('dashboard.trendRising') : country.trend === 'down' ? t('dashboard.trendFalling') : t('dashboard.trendStable') }}
+              </span>
               <span class="text-sm font-bold text-gray-900 dark:text-white">{{ country.rate.toFixed(1) }}%</span>
             </div>
           </div>

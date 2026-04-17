@@ -11,6 +11,7 @@ export const useInflationStore = defineStore('inflation', () => {
   const sorted = computed(() => [...countries.value].sort((a, b) => b.rate - a.rate))
 
   const highestInflation = computed(() => sorted.value.slice(0, 5))
+  const lowestInflation = computed(() => [...sorted.value].reverse().slice(0, 5))
 
   function beatsInflation(countryCode: string, dividendYield: number): boolean {
     const entry = countries.value.find((c) => c.countryCode === countryCode)
@@ -30,5 +31,5 @@ export const useInflationStore = defineStore('inflation', () => {
     }
   }
 
-  return { countries, isLoading, error, sorted, highestInflation, beatsInflation, init }
+  return { countries, isLoading, error, sorted, highestInflation, lowestInflation, beatsInflation, init }
 })
