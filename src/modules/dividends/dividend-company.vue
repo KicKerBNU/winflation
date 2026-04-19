@@ -7,6 +7,7 @@ import { fetchCompanyDetail } from './api/dividends.api'
 import { useInterestRateStore } from '@/modules/interest-rate/store/interest-rate.store'
 import { useInflationStore } from '@/modules/inflation/store/inflation.store'
 import { useThemeStore } from '@/modules/theme/store/theme.store'
+import FollowButton from '@/modules/follow/components/FollowButton.vue'
 import type { CompanyDetail } from './domain/dividends.types'
 
 Chart.register(...registerables)
@@ -226,6 +227,15 @@ watch(() => themeStore.isDark, () => {
             <span>{{ countryFlag(company.countryCode) }} {{ company.country }}</span>
           </div>
         </div>
+        <FollowButton
+          :ticker="company.ticker"
+          :company="company.company"
+          :country="company.country"
+          :country-code="company.countryCode"
+          :sector="company.sector"
+          :exchange="company.exchange"
+          source="dividend"
+        />
       </div>
 
       <!-- Stats cards -->

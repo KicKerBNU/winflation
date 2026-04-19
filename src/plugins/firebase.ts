@@ -2,6 +2,7 @@ import type { App } from 'vue'
 import { initializeApp } from 'firebase/app'
 import { getAnalytics } from 'firebase/analytics'
 import { getFirestore } from 'firebase/firestore'
+import { getAuth } from 'firebase/auth'
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -16,6 +17,7 @@ const firebaseConfig = {
 export const firebaseApp = initializeApp(firebaseConfig)
 export const analytics = getAnalytics(firebaseApp)
 export const db = getFirestore(firebaseApp)
+export const auth = getAuth(firebaseApp)
 
 export function registerFirebase(_app: App) {
   // Firebase is initialized above — modules (auth, firestore, etc.) can be imported directly

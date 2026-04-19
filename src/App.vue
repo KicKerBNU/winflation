@@ -1,13 +1,17 @@
 <script setup lang="ts">
+import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useRoute } from 'vue-router'
 import { useThemeStore } from '@/modules/theme/store/theme.store'
+import { useAuthStore } from '@/modules/auth/store/auth.store'
+import UserMenu from '@/modules/auth/components/UserMenu.vue'
 
 const { t } = useI18n()
 const route = useRoute()
 const themeStore = useThemeStore()
+const auth = useAuthStore()
 
-const navItems = [
+const baseNavItems = [
   { to: '/', icon: 'gauge-high', labelKey: 'nav.dashboard' },
   { to: '/interest-rate', icon: 'percent', labelKey: 'nav.interestRate' },
   { to: '/inflation', icon: 'arrow-trend-up', labelKey: 'nav.inflation' },
@@ -15,14 +19,31 @@ const navItems = [
   { to: '/ai-recommendation', icon: 'robot', labelKey: 'nav.aiRecommendation' },
 ]
 
+const navItems = computed(() =>
+  auth.isAuthenticated
+    ? [...baseNavItems, { to: '/followed', icon: 'star', labelKey: 'nav.followed' }]
+    : baseNavItems,
+)
+
 function isActive(path: string) {
   if (path === '/') return route.path === '/'
   return route.path.startsWith(path)
 }
+
+// Auth pages render their own full-screen layout — hide the chrome on /login and /register
+const hideChrome = computed(() => ['login', 'register'].includes(route.name as string))
 </script>
 
 <template>
-  <div class="flex min-h-screen bg-gray-100 transition-colors duration-200 dark:bg-gray-950">
+  <!-- Auth pages: full-screen layout without sidebar/header -->
+  <RouterView v-if="hideChrome" />
+
+  <div v-else class="flex min-h-screen bg-gray-100 transition-colors duration-200 dark:bg-gray-950">
+
+    <!-- Desktop top-right bar (user menu floats above content) -->
+    <div class="fixed right-6 top-4 z-30 hidden lg:block">
+      <UserMenu />
+    </div>
 
     <!-- Desktop sidebar — hidden on mobile -->
     <aside
@@ -80,12 +101,15 @@ function isActive(path: string) {
         <span class="text-violet-600 dark:text-violet-400">winflation</span>
         <span class="text-gray-400 dark:text-gray-500">.eu</span>
       </span>
-      <button
-        class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
-        @click="themeStore.toggle()"
-      >
-        <FontAwesomeIcon :icon="themeStore.isDark ? 'sun' : 'moon'" />
-      </button>
+      <div class="flex items-center gap-2">
+        <button
+          class="flex cursor-pointer items-center gap-2 rounded-lg px-3 py-1.5 text-sm text-gray-500 transition-colors hover:bg-gray-100 dark:text-gray-400 dark:hover:bg-gray-800"
+          @click="themeStore.toggle()"
+        >
+          <FontAwesomeIcon :icon="themeStore.isDark ? 'sun' : 'moon'" />
+        </button>
+        <UserMenu />
+      </div>
     </header>
 
     <!-- Mobile bottom nav -->

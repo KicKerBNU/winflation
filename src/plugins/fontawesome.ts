@@ -9,6 +9,7 @@ import {
   faArrowUp,
   faArrowDown,
   faArrowLeft,
+  faArrowRight,
   faArrowUpRightFromSquare,
   faMinus,
   faMagnifyingGlass,
@@ -25,7 +26,14 @@ import {
   faThumbsDown,
   faRobot,
   faCalendar,
+  faSpinner,
+  faRightToBracket,
+  faRightFromBracket,
+  faStar,
+  faBookmark,
 } from '@fortawesome/free-solid-svg-icons'
+import { faStar as farStar } from '@fortawesome/free-regular-svg-icons'
+import { faGoogle } from '@fortawesome/free-brands-svg-icons'
 import type { App } from 'vue'
 
 library.add(
@@ -37,6 +45,7 @@ library.add(
   faArrowUp,
   faArrowDown,
   faArrowLeft,
+  faArrowRight,
   faArrowUpRightFromSquare,
   faMinus,
   faMagnifyingGlass,
@@ -53,6 +62,13 @@ library.add(
   faThumbsDown,
   faRobot,
   faCalendar,
+  faSpinner,
+  faRightToBracket,
+  faRightFromBracket,
+  faStar,
+  faBookmark,
+  farStar,
+  faGoogle,
 )
 
 export function registerFontAwesome(app: App) {

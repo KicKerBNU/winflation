@@ -5,6 +5,7 @@ import { useI18n } from 'vue-i18n'
 import { Chart, registerables } from 'chart.js'
 import { useAiRecommendationStore } from './store/ai-recommendation.store'
 import { useThemeStore } from '@/modules/theme/store/theme.store'
+import FollowButton from '@/modules/follow/components/FollowButton.vue'
 import type { AiCompanyCard, CompanyStatus, LocalizedText, YearlyYield } from './domain/ai-recommendation.types'
 
 Chart.register(...registerables)
@@ -277,6 +278,15 @@ watch(() => themeStore.isDark, () => {
             <span>{{ company.exchange }}</span>
           </div>
         </div>
+        <FollowButton
+          :ticker="company.ticker"
+          :company="company.company"
+          :country="company.country"
+          :country-code="company.countryCode"
+          :sector="company.sector"
+          :exchange="company.exchange"
+          source="ai-pick"
+        />
       </div>
 
       <!-- Key metrics -->
