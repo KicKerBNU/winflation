@@ -6,4 +6,9 @@ export const aiRecommendationRoutes: RouteRecordRaw[] = [
     name: 'ai-recommendation',
     component: () => import('./ai-recommendation.vue'),
   },
+  {
+    path: '/ai-recommendation/:ticker',
+    name: 'ai-recommendation-detail',
+    component: () => import('./ai-recommendation-detail.vue'),
+  },
 ]

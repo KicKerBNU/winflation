@@ -2,12 +2,14 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAiRecommendationStore } from './store/ai-recommendation.store'
-import type { AiCompanyCard, YearlyYield, CompanyStatus } from './domain/ai-recommendation.types'
+import type { AiCompanyCard, YearlyYield, CompanyStatus, LocalizedText } from './domain/ai-recommendation.types'
 
 const { t, locale } = useI18n()
 const store = useAiRecommendationStore()
 
 store.init()
+
+const SERIF = "ui-serif, Georgia, 'Times New Roman', serif"
 
 const formattedDate = computed(() => {
   if (!store.generatedAt) return ''
@@ -17,6 +19,9 @@ const formattedDate = computed(() => {
     year: 'numeric',
   })
 })
+
+const hero = computed<AiCompanyCard | null>(() => store.cards[0] ?? null)
+const rest = computed<AiCompanyCard[]>(() => store.cards.slice(1))
 
 function countryFlag(code: string): string {
   return code
@@ -37,36 +42,41 @@ function formatMarketCap(n: number): string {
   return `€${n}`
 }
 
-function maxYield(company: AiCompanyCard): number {
-  if (!company.historicYields) return 1
-  return Math.max(...company.historicYields.map((h) => h.yield), 0.1)
+function localized(text: LocalizedText | undefined): string {
+  if (!text) return ''
+  return text[locale.value as keyof LocalizedText] ?? text['en-US']
 }
 
-function barHeight(h: YearlyYield, company: AiCompanyCard): string {
-  return `${Math.max((h.yield / maxYield(company)) * 56, 4)}px`
+function maxYield(values: YearlyYield[]): number {
+  return Math.max(...values.map((h) => h.yield), 0.1)
 }
 
-const statusConfig: Record<CompanyStatus, { label: string; icon: string; cardBorder: string; badgeBg: string; badgeText: string }> = {
+function barHeightPx(h: YearlyYield, values: YearlyYield[], max: number): string {
+  return `${Math.max((h.yield / maxYield(values)) * max, 4)}px`
+}
+
+function routeForCompany(ticker: string) {
+  return { name: 'ai-recommendation-detail', params: { ticker: encodeURIComponent(ticker) } }
+}
+
+const statusConfig: Record<CompanyStatus, { label: string; dot: string; text: string; bar: string }> = {
   bullish: {
     label: 'aiRecommendation.statusBullish',
-    icon: 'arrow-trend-up',
-    cardBorder: 'border-l-emerald-500',
-    badgeBg: 'bg-emerald-100 dark:bg-emerald-900/30',
-    badgeText: 'text-emerald-700 dark:text-emerald-300',
+    dot: 'bg-emerald-500',
+    text: 'text-emerald-700 dark:text-emerald-300',
+    bar: 'bg-emerald-500 dark:bg-emerald-400',
   },
   neutral: {
     label: 'aiRecommendation.statusNeutral',
-    icon: 'minus',
-    cardBorder: 'border-l-amber-500',
-    badgeBg: 'bg-amber-100 dark:bg-amber-900/30',
-    badgeText: 'text-amber-700 dark:text-amber-300',
+    dot: 'bg-amber-500',
+    text: 'text-amber-700 dark:text-amber-300',
+    bar: 'bg-amber-500 dark:bg-amber-400',
   },
   bearish: {
     label: 'aiRecommendation.statusBearish',
-    icon: 'arrow-trend-down',
-    cardBorder: 'border-l-red-500',
-    badgeBg: 'bg-red-100 dark:bg-red-900/30',
-    badgeText: 'text-red-700 dark:text-red-300',
+    dot: 'bg-red-500',
+    text: 'text-red-700 dark:text-red-300',
+    bar: 'bg-red-500 dark:bg-red-400',
   },
 }
 </script>
@@ -74,48 +84,48 @@ const statusConfig: Record<CompanyStatus, { label: string; icon: string; cardBor
 <template>
   <div class="p-4 pt-16 sm:px-6 sm:pb-6 lg:p-8">
 
-    <!-- Header -->
-    <div class="mb-8 flex flex-wrap items-start justify-between gap-4">
-      <div>
-        <div class="mb-2 flex items-center gap-3">
-          <div class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-violet-800 shadow-lg shadow-violet-500/20">
-            <FontAwesomeIcon icon="robot" class="text-white" />
-          </div>
-          <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('aiRecommendation.title') }}</h1>
-        </div>
-        <p class="ml-13 text-sm text-gray-500 dark:text-gray-400">{{ t('aiRecommendation.subtitle') }}</p>
+    <!-- Editorial header -->
+    <header class="mx-auto mb-12 max-w-4xl text-center">
+      <div class="inline-flex items-center gap-2 rounded-full bg-violet-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-violet-700 dark:bg-violet-900/30 dark:text-violet-300">
+        <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-500"></span>
+        <template v-if="formattedDate">{{ t('aiRecommendation.kicker', { date: formattedDate }) }}</template>
+        <template v-else>{{ t('aiRecommendation.kickerNoDate') }}</template>
       </div>
-      <div v-if="store.hasData" class="flex flex-col items-end gap-2">
-        <span class="flex items-center gap-1.5 text-xs text-gray-400 dark:text-gray-500">
-          <FontAwesomeIcon icon="calendar" class="text-xs" />
-          {{ t('aiRecommendation.updatedAt', { date: formattedDate }) }}
-        </span>
-        <span class="flex items-center gap-1.5 rounded-full border border-violet-200 bg-violet-50 px-3 py-1 text-xs font-medium text-violet-700 dark:border-violet-800/40 dark:bg-violet-900/20 dark:text-violet-300">
-          <span class="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-500"></span>
-          {{ t('aiRecommendation.refreshesDaily') }}
-        </span>
-      </div>
-    </div>
-
-    <!-- Phase 1 loading skeletons (before any card arrives) -->
-    <div v-if="store.isLoading" class="space-y-6">
-      <div
-        v-for="i in 10"
-        :key="i"
-        class="animate-pulse overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
+      <h1
+        class="mt-4 text-4xl font-bold leading-[1.05] tracking-tight text-gray-900 sm:text-5xl dark:text-white"
+        :style="{ fontFamily: SERIF }"
       >
-        <div class="border-l-4 border-l-gray-200 p-6 dark:border-l-gray-700">
-          <div class="mb-4 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <div class="h-7 w-7 rounded-full bg-gray-200 dark:bg-gray-700" />
-              <div class="h-5 w-44 rounded bg-gray-200 dark:bg-gray-700" />
-            </div>
-            <div class="h-6 w-20 rounded-full bg-gray-200 dark:bg-gray-700" />
+        {{ t('aiRecommendation.headlinePre') }}
+        <em class="italic text-violet-600 dark:text-violet-400">{{ t('aiRecommendation.headlineAccent') }}</em>.
+      </h1>
+      <p class="mt-4 text-base leading-relaxed text-gray-500 sm:text-lg dark:text-gray-400">
+        {{ t('aiRecommendation.editorialSubtitle') }}
+      </p>
+    </header>
+
+    <!-- Loading -->
+    <div v-if="store.isLoading" class="mx-auto max-w-5xl space-y-16">
+      <div class="animate-pulse overflow-hidden rounded-3xl bg-gray-900">
+        <div class="grid gap-0 md:grid-cols-5">
+          <div class="space-y-5 p-10 md:col-span-3">
+            <div class="h-3 w-40 rounded bg-white/10" />
+            <div class="h-10 w-2/3 rounded bg-white/10" />
+            <div class="h-4 w-full rounded bg-white/10" />
+            <div class="h-4 w-11/12 rounded bg-white/10" />
           </div>
-          <div class="mb-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <div v-for="j in 4" :key="j" class="h-16 rounded-xl bg-gray-200 dark:bg-gray-700" />
+          <div class="space-y-5 bg-gradient-to-br from-violet-600/60 to-violet-900/60 p-10 md:col-span-2">
+            <div class="h-3 w-24 rounded bg-white/20" />
+            <div class="h-16 w-40 rounded bg-white/20" />
+            <div class="h-24 w-full rounded bg-white/20" />
           </div>
-          <div class="h-20 rounded-xl bg-gray-200 dark:bg-gray-700" />
+        </div>
+      </div>
+      <div class="grid gap-10 md:grid-cols-2">
+        <div v-for="i in 4" :key="i" class="space-y-3">
+          <div class="h-3 w-32 rounded bg-gray-200 dark:bg-gray-800" />
+          <div class="h-8 w-3/4 rounded bg-gray-200 dark:bg-gray-800" />
+          <div class="h-3 w-1/2 rounded bg-gray-200 dark:bg-gray-800" />
+          <div class="h-16 w-full rounded bg-gray-200 dark:bg-gray-800" />
         </div>
       </div>
     </div>
@@ -123,15 +133,15 @@ const statusConfig: Record<CompanyStatus, { label: string; icon: string; cardBor
     <!-- Error -->
     <div
       v-else-if="store.error"
-      class="rounded-2xl border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-600 dark:border-red-800/40 dark:bg-red-900/20 dark:text-red-400"
+      class="mx-auto max-w-3xl rounded-2xl border border-red-200 bg-red-50 px-6 py-4 text-sm text-red-600 dark:border-red-800/40 dark:bg-red-900/20 dark:text-red-400"
     >
       {{ store.error }}
     </div>
 
-    <!-- Empty state -->
+    <!-- Empty -->
     <div
       v-else-if="!store.hasData"
-      class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center dark:border-gray-700 dark:bg-gray-900"
+      class="mx-auto flex max-w-3xl flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center dark:border-gray-700 dark:bg-gray-900"
     >
       <div class="mb-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-violet-100 dark:bg-violet-900/30">
         <FontAwesomeIcon icon="robot" class="text-2xl text-violet-500 dark:text-violet-400" />
@@ -139,183 +149,195 @@ const statusConfig: Record<CompanyStatus, { label: string; icon: string; cardBor
       <p class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ t('aiRecommendation.empty') }}</p>
     </div>
 
-    <!-- Company cards -->
-    <div v-else class="space-y-6">
-      <div
-        v-for="company in store.cards"
-        :key="company.ticker"
-        class="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-800 dark:bg-gray-900"
+    <template v-else>
+      <!-- HERO -->
+      <RouterLink
+        v-if="hero"
+        :to="routeForCompany(hero.ticker)"
+        class="group mx-auto mb-16 block max-w-5xl cursor-pointer overflow-hidden rounded-3xl bg-gray-900 text-white transition-shadow hover:shadow-2xl hover:shadow-violet-500/20"
       >
-        <div class="border-l-4 p-5 sm:p-6" :class="statusConfig[company.status].cardBorder">
-
-          <!-- Card header -->
-          <div class="mb-4 flex flex-wrap items-start justify-between gap-3">
-            <div class="flex items-center gap-3">
-              <!-- Rank badge -->
-              <span class="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gray-100 text-xs font-bold text-gray-500 dark:bg-gray-800 dark:text-gray-400">
-                {{ company.rank }}
+        <div class="grid gap-0 md:grid-cols-5">
+          <!-- Left: editorial copy -->
+          <div class="p-8 sm:p-10 md:col-span-3">
+            <div class="mb-4 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-widest text-violet-300">
+              <span>{{ t('aiRecommendation.pickOfTheWeek') }}</span>
+              <span>·</span>
+              <span>{{ t('aiRecommendation.rankNumber', { rank: hero.rank }) }}</span>
+              <span class="ml-auto flex items-center gap-1.5">
+                <span class="h-1.5 w-1.5 rounded-full" :class="statusConfig[hero.status].dot"></span>
+                <span>{{ t(statusConfig[hero.status].label) }}</span>
               </span>
-              <!-- Company logo -->
-              <div class="flex h-9 w-9 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-gray-100 bg-white p-1 dark:border-gray-700 dark:bg-gray-800">
-                <img
-                  :src="`https://logo.clearbit.com/${company.website}`"
-                  :alt="company.company"
-                  class="h-full w-full object-contain"
-                  @error="($event.target as HTMLImageElement).style.display = 'none'"
-                />
-              </div>
-              <div>
-                <h2 class="text-base font-bold text-gray-900 dark:text-white">{{ company.company }}</h2>
-                <div class="mt-0.5 flex flex-wrap items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
-                  <span class="font-mono font-semibold text-violet-600 dark:text-violet-400">{{ company.ticker }}</span>
-                  <span>·</span>
-                  <span>{{ countryFlag(company.countryCode) }} {{ company.country }}</span>
-                  <span>·</span>
-                  <span>{{ company.sector }}</span>
-                  <span class="hidden sm:inline">·</span>
-                  <span class="hidden sm:inline">{{ company.exchange }}</span>
-                </div>
-              </div>
             </div>
-            <!-- Status badge -->
-            <span
-              class="flex flex-shrink-0 items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold"
-              :class="[statusConfig[company.status].badgeBg, statusConfig[company.status].badgeText]"
+            <h2 class="text-3xl font-bold leading-tight sm:text-4xl" :style="{ fontFamily: SERIF }">
+              {{ hero.company }}
+            </h2>
+            <div class="mt-2 flex flex-wrap items-center gap-2 text-sm text-gray-400">
+              <span class="font-mono text-violet-300">{{ hero.ticker }}</span>
+              <span>·</span>
+              <span>{{ countryFlag(hero.countryCode) }} {{ hero.country }}</span>
+              <span>·</span>
+              <span>{{ hero.sector }}</span>
+              <span class="hidden sm:inline">·</span>
+              <span class="hidden sm:inline">{{ hero.exchange }}</span>
+            </div>
+            <p class="mt-8 text-base leading-relaxed text-gray-200 sm:text-lg">
+              {{ localized(hero.pro) }}
+            </p>
+            <blockquote
+              class="mt-8 border-l-4 border-violet-400 pl-5 text-lg leading-snug text-white sm:text-xl"
+              :style="{ fontFamily: SERIF }"
             >
-              <FontAwesomeIcon :icon="statusConfig[company.status].icon" class="text-[10px]" />
-              {{ t(statusConfig[company.status].label) }}
-            </span>
-          </div>
-
-          <!-- Key metrics -->
-          <div class="mb-5 grid grid-cols-2 gap-3 sm:grid-cols-4">
-            <!-- Yield -->
-            <div class="rounded-xl border border-violet-200 bg-violet-50 p-3 dark:border-violet-800/40 dark:bg-violet-900/20">
-              <p class="text-xs text-violet-500 dark:text-violet-400">{{ t('aiRecommendation.yieldLabel') }}</p>
-              <p class="mt-1 text-2xl font-bold text-violet-700 dark:text-violet-300">
-                {{ company.dividendYield.toFixed(1) }}%
-              </p>
-              <p class="mt-0.5 text-xs text-violet-400 dark:text-violet-500">
-                {{ formatPrice(company.annualDividend, company.currency) }}/yr
-              </p>
-            </div>
-
-            <!-- Price -->
-            <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
-              <p class="text-xs text-gray-400 dark:text-gray-500">{{ t('aiRecommendation.price') }}</p>
-              <p class="mt-1 text-lg font-bold text-gray-900 dark:text-white">
-                {{ formatPrice(company.currentPrice, company.currency) }}
-              </p>
-              <p
-                class="mt-0.5 flex items-center gap-1 text-xs"
-                :class="company.priceChangePercent >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-500 dark:text-red-400'"
-              >
-                <FontAwesomeIcon :icon="company.priceChangePercent >= 0 ? 'arrow-up' : 'arrow-down'" class="text-[9px]" />
-                {{ Math.abs(company.priceChangePercent).toFixed(2) }}%
-              </p>
-            </div>
-
-            <!-- Annual dividend -->
-            <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
-              <p class="text-xs text-gray-400 dark:text-gray-500">{{ t('aiRecommendation.annualDiv') }}</p>
-              <p class="mt-1 text-lg font-bold text-gray-900 dark:text-white">
-                {{ formatPrice(company.annualDividend, company.currency) }}
-              </p>
-              <p class="mt-0.5 text-xs text-gray-400 dark:text-gray-500">per share / year</p>
-            </div>
-
-            <!-- Market cap -->
-            <div class="rounded-xl border border-gray-200 bg-gray-50 p-3 dark:border-gray-700 dark:bg-gray-800/50">
-              <p class="text-xs text-gray-400 dark:text-gray-500">{{ t('aiRecommendation.marketCap') }}</p>
-              <p class="mt-1 text-lg font-bold text-gray-900 dark:text-white">
-                {{ formatMarketCap(company.marketCap) }}
-              </p>
+              &ldquo;{{ localized(hero.con) }}&rdquo;
+            </blockquote>
+            <div class="mt-8 inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-violet-300 transition-transform group-hover:translate-x-1">
+              {{ t('aiRecommendation.readFullAnalysis') }}
+              <FontAwesomeIcon icon="arrow-right" class="text-[10px]" />
             </div>
           </div>
 
-          <!-- Historical yield chart + dividends per year -->
-          <div class="mb-5 grid grid-cols-1 gap-4 lg:grid-cols-2">
+          <!-- Right: metrics column -->
+          <div class="flex flex-col justify-between gap-6 border-t border-white/10 bg-gradient-to-br from-violet-600 to-violet-900 p-8 sm:p-10 md:col-span-2 md:border-l md:border-t-0">
+            <div>
+              <div class="text-xs uppercase tracking-widest text-violet-200">{{ t('aiRecommendation.yieldLabel') }}</div>
+              <div class="mt-1 flex items-baseline gap-2">
+                <div class="text-6xl font-bold tracking-tight sm:text-7xl">{{ hero.dividendYield.toFixed(1) }}</div>
+                <div class="text-3xl font-semibold text-violet-200">%</div>
+              </div>
+              <div class="mt-1 text-sm text-violet-200">
+                {{ formatPrice(hero.annualDividend, hero.currency) }}/yr · {{ formatPrice(hero.currentPrice, hero.currency) }}
+              </div>
+            </div>
 
             <!-- Yield history bar chart -->
-            <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
-              <p class="mb-3 text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('aiRecommendation.yieldHistory') }}</p>
-              <!-- Skeleton while loading -->
-              <div v-if="company.historicYields === null" class="animate-pulse flex items-end gap-2 h-16">
-                <div v-for="k in 5" :key="k" class="flex-1 rounded-t-sm bg-gray-200 dark:bg-gray-700"
-                  :style="{ height: `${20 + k * 8}px` }" />
+            <div>
+              <div class="mb-3 text-xs uppercase tracking-widest text-violet-200">
+                {{ t('aiRecommendation.yieldHistory') }}
               </div>
-              <!-- Chart -->
-              <div v-else class="flex items-end gap-2">
+              <div v-if="hero.historicYields === null" class="flex h-[72px] animate-pulse items-end gap-2">
                 <div
-                  v-for="h in company.historicYields"
+                  v-for="k in 5"
+                  :key="k"
+                  class="flex-1 rounded-t-sm bg-white/20"
+                  :style="{ height: `${20 + k * 8}px` }"
+                />
+              </div>
+              <div v-else class="flex h-[72px] items-end gap-2">
+                <div
+                  v-for="h in hero.historicYields"
                   :key="h.year"
                   class="flex flex-1 flex-col items-center gap-1"
                 >
-                  <span class="text-[10px] font-medium text-violet-600 dark:text-violet-400">{{ h.yield.toFixed(1) }}%</span>
+                  <span class="text-[10px] font-medium text-white">{{ h.yield.toFixed(1) }}%</span>
                   <div
-                    class="w-full rounded-t-sm bg-violet-500 transition-all dark:bg-violet-400"
-                    :style="{ height: barHeight(h, company) }"
+                    class="w-full rounded-t-sm bg-white/80"
+                    :style="{ height: barHeightPx(h, hero.historicYields, 40) }"
                   />
-                  <span class="text-[10px] text-gray-400 dark:text-gray-500">{{ h.year }}</span>
+                  <span class="text-[10px] text-violet-200">{{ h.year }}</span>
                 </div>
               </div>
             </div>
 
-            <!-- Dividends per year table -->
-            <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800/40">
-              <p class="mb-3 text-xs font-medium text-gray-500 dark:text-gray-400">{{ t('aiRecommendation.dividendsPerYear') }}</p>
-              <!-- Skeleton while loading -->
-              <div v-if="company.dividendsPerYear === null" class="animate-pulse space-y-2">
-                <div v-for="k in 5" :key="k" class="flex justify-between">
-                  <div class="h-3 w-10 rounded bg-gray-200 dark:bg-gray-700" />
-                  <div class="h-3 w-20 rounded bg-gray-200 dark:bg-gray-700" />
+            <div class="flex items-center justify-between rounded-2xl bg-black/20 p-4">
+              <div>
+                <div class="text-xs uppercase tracking-widest text-violet-200">{{ t('aiRecommendation.marketCap') }}</div>
+                <div class="mt-0.5 text-lg font-bold">{{ formatMarketCap(hero.marketCap) }}</div>
+              </div>
+              <div class="text-right">
+                <div class="text-xs uppercase tracking-widest text-violet-200">{{ t('aiRecommendation.price') }}</div>
+                <div
+                  class="mt-0.5 flex items-center justify-end gap-1 text-sm"
+                  :class="hero.priceChangePercent >= 0 ? 'text-emerald-300' : 'text-red-300'"
+                >
+                  <FontAwesomeIcon :icon="hero.priceChangePercent >= 0 ? 'arrow-up' : 'arrow-down'" class="text-[9px]" />
+                  {{ Math.abs(hero.priceChangePercent).toFixed(2) }}%
                 </div>
               </div>
-              <!-- Table -->
-              <div v-else class="space-y-1.5">
-                <div
-                  v-for="d in [...company.dividendsPerYear].reverse()"
-                  :key="d.year"
-                  class="flex items-center justify-between text-xs"
-                >
-                  <span class="font-medium text-gray-600 dark:text-gray-300">{{ d.year }}</span>
-                  <div class="flex items-center gap-3">
-                    <span class="font-bold text-gray-900 dark:text-white">
-                      {{ formatPrice(d.totalAmount, company.currency) }}
-                    </span>
-                    <span class="rounded-full border border-gray-200 px-2 py-0.5 text-gray-400 dark:border-gray-600 dark:text-gray-500">
-                      {{ d.payments }}x
-                    </span>
+            </div>
+          </div>
+        </div>
+      </RouterLink>
+
+      <!-- ALSO IN THE RANKING -->
+      <section v-if="rest.length" class="mx-auto max-w-5xl">
+        <div class="mb-6 flex items-baseline justify-between border-b border-gray-200 pb-3 dark:border-gray-800">
+          <h3 class="text-xl font-bold text-gray-900 sm:text-2xl dark:text-white" :style="{ fontFamily: SERIF }">
+            {{ t('aiRecommendation.alsoRanking') }}
+          </h3>
+          <span class="text-xs uppercase tracking-widest text-gray-400">
+            {{ t('aiRecommendation.morePicks', { count: rest.length }) }}
+          </span>
+        </div>
+        <div class="grid gap-6 md:grid-cols-2">
+          <RouterLink
+            v-for="p in rest"
+            :key="p.ticker"
+            :to="routeForCompany(p.ticker)"
+            class="group block cursor-pointer rounded-2xl border border-gray-200 bg-white p-5 transition-all hover:-translate-y-0.5 hover:border-violet-300 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:hover:border-violet-700"
+          >
+            <div class="mb-3 flex flex-wrap items-center gap-2 text-[11px] uppercase tracking-widest">
+              <span class="h-1.5 w-1.5 rounded-full" :class="statusConfig[p.status].dot"></span>
+              <span :class="statusConfig[p.status].text">{{ t(statusConfig[p.status].label) }}</span>
+              <span class="text-gray-400">· {{ t('aiRecommendation.rankNumber', { rank: p.rank }) }}</span>
+              <FontAwesomeIcon
+                icon="arrow-right"
+                class="ml-auto text-[10px] text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500 dark:text-gray-600"
+              />
+            </div>
+            <h4 class="text-xl font-bold leading-tight text-gray-900 sm:text-2xl dark:text-white" :style="{ fontFamily: SERIF }">
+              {{ p.company }}
+            </h4>
+            <div class="mt-1 flex flex-wrap items-center gap-1.5 text-xs text-gray-400">
+              <span class="font-mono text-violet-600 dark:text-violet-400">{{ p.ticker }}</span>
+              <span>·</span>
+              <span>{{ countryFlag(p.countryCode) }} {{ p.country }}</span>
+              <span>·</span>
+              <span>{{ p.sector }}</span>
+            </div>
+            <p class="mt-4 text-sm leading-relaxed text-gray-600 line-clamp-2 dark:text-gray-400">
+              {{ localized(p.pro) }}
+            </p>
+
+            <!-- Compact yield bar chart -->
+            <div class="mt-5 border-t border-gray-100 pt-4 dark:border-gray-800">
+              <div class="flex items-end justify-between gap-4">
+                <div>
+                  <div class="text-[10px] uppercase tracking-wider text-gray-400">{{ t('aiRecommendation.yieldLabel') }}</div>
+                  <div class="text-2xl font-bold tabular-nums text-gray-900 sm:text-3xl dark:text-white">
+                    {{ p.dividendYield.toFixed(1) }}<span class="text-base text-gray-400">%</span>
+                  </div>
+                </div>
+
+                <div v-if="p.historicYields === null" class="flex h-10 w-[140px] animate-pulse items-end gap-1">
+                  <div v-for="k in 5" :key="k" class="flex-1 rounded-t-sm bg-gray-200 dark:bg-gray-700" :style="{ height: `${12 + k * 4}px` }" />
+                </div>
+                <div v-else class="flex h-10 w-[140px] items-end gap-1">
+                  <div
+                    v-for="h in p.historicYields"
+                    :key="h.year"
+                    class="flex flex-1 flex-col items-center gap-0.5"
+                  >
+                    <div
+                      class="w-full rounded-t-sm bg-violet-500 dark:bg-violet-400"
+                      :style="{ height: barHeightPx(h, p.historicYields, 30) }"
+                    />
+                    <span class="text-[8px] text-gray-400">{{ String(h.year).slice(-2) }}</span>
                   </div>
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- Pro / Con -->
-          <div class="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <!-- Pro -->
-            <div class="rounded-xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800/40 dark:bg-emerald-900/20">
-              <div class="mb-2 flex items-center gap-2">
-                <FontAwesomeIcon icon="thumbs-up" class="text-sm text-emerald-600 dark:text-emerald-400" />
-                <span class="text-xs font-semibold text-emerald-700 dark:text-emerald-300">{{ t('aiRecommendation.proTitle') }}</span>
-              </div>
-              <p class="text-xs leading-relaxed text-emerald-700 dark:text-emerald-300">{{ company.pro[locale as keyof typeof company.pro] ?? company.pro['en-US'] }}</p>
-            </div>
-
-            <!-- Con -->
-            <div class="rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-800/40 dark:bg-red-900/20">
-              <div class="mb-2 flex items-center gap-2">
-                <FontAwesomeIcon icon="thumbs-down" class="text-sm text-red-500 dark:text-red-400" />
-                <span class="text-xs font-semibold text-red-700 dark:text-red-300">{{ t('aiRecommendation.conTitle') }}</span>
-              </div>
-              <p class="text-xs leading-relaxed text-red-700 dark:text-red-300">{{ company.con[locale as keyof typeof company.con] ?? company.con['en-US'] }}</p>
-            </div>
-          </div>
-
+          </RouterLink>
         </div>
-      </div>
-    </div>
+      </section>
+    </template>
 
   </div>
 </template>
+
+<style scoped>
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+</style>

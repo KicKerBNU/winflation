@@ -51,7 +51,9 @@
       "Bash(yarn build *)",
       "Bash(xargs ls *)",
       "Bash(npm run *)",
-      "Bash(echo \"PID $!\")"
+      "Bash(echo \"PID $!\")",
+      "Bash(node --check scripts/generate-recommendations.mjs)",
+      "Bash(node --check /Users/evertonbuzzi/Dev/winflation.eu/scripts/generate-recommendations.mjs)"
     ]
   },
   "hooks": {

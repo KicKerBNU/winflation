@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai'
 import { initializeApp, cert } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
+import { getStorage } from 'firebase-admin/storage'
 
 const geminiKey = process.env.GEMINI_API_KEY
 const firebaseJsonRaw = process.env.FIREBASE_SERVICE_ACCOUNT
@@ -23,16 +24,165 @@ try {
   throw new Error(`FIREBASE_SERVICE_ACCOUNT must be valid JSON: ${err.message}`)
 }
 
+const storageBucketName =
+  process.env.FIREBASE_STORAGE_BUCKET?.trim() || `${serviceAccount.project_id}.firebasestorage.app`
+
 // Init Firebase Admin
-initializeApp({ credential: cert(serviceAccount) })
+initializeApp({ credential: cert(serviceAccount), storageBucket: storageBucketName })
 const db = getFirestore()
+const bucket = getStorage().bucket()
 
 // Init Gemini
 const ai = new GoogleGenAI({ apiKey: geminiKey })
 
-const today = new Date().toISOString().split('T')[0]
+async function callGeminiWithRetry(prompt) {
+  for (let attempt = 0; attempt < 4; attempt++) {
+    try {
+      const res = await ai.models.generateContent({ model: 'gemini-flash-latest', contents: prompt })
+      return (res.text ?? '').trim()
+    } catch (err) {
+      const isRateLimit = err instanceof Error && err.message.includes('429')
+      if (!isRateLimit || attempt === 3) throw err
+      await new Promise((r) => setTimeout(r, 2000 * 2 ** attempt))
+    }
+  }
+  return ''
+}
 
-const prompt = `You are a financial data analyst specializing in European equity markets. Today is ${today}.
+function stripFences(text) {
+  let t = text
+  if (t.startsWith('```')) t = t.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
+  return t
+}
+
+function safeTicker(t) {
+  return String(t).replace(/[^A-Za-z0-9._-]/g, '_').toUpperCase()
+}
+
+function extFromContentType(ct) {
+  if (!ct) return 'png'
+  if (ct.includes('svg')) return 'svg'
+  if (ct.includes('jpeg') || ct.includes('jpg')) return 'jpg'
+  if (ct.includes('webp')) return 'webp'
+  if (ct.includes('gif')) return 'gif'
+  return 'png'
+}
+
+async function resolveLogos(companies) {
+  // 1. Check Firestore cache (logos collection accumulates over time, independent of daily rotation)
+  const cached = {}
+  await Promise.all(
+    companies.map(async (c) => {
+      const snap = await db.collection('logos').doc(safeTicker(c.ticker)).get()
+      const url = snap.exists ? snap.data()?.logoUrl : null
+      if (url) cached[c.ticker] = url
+    }),
+  )
+
+  const missing = companies.filter((c) => !cached[c.ticker])
+  const resolved = {}
+
+  if (missing.length > 0) {
+    const list = missing
+      .map((c) => `- ${c.ticker} | ${c.company} | website: ${c.website || 'unknown'}`)
+      .join('\n')
+    const logoPrompt = `For each European company below, return the single best public URL to its official logo.
+
+Requirements:
+- Prefer PNG or SVG with transparent background.
+- Prefer Wikimedia Commons (upload.wikimedia.org) or the company's own static asset CDN.
+- The URL must return the image directly (not an HTML page).
+- Return ONLY raw JSON, no markdown, no explanation:
+[{"ticker":"<ticker>","logoUrl":"https://..."}]
+
+Companies:
+${list}`
+
+    const raw = await callGeminiWithRetry(logoPrompt)
+    let suggestions = []
+    try {
+      suggestions = JSON.parse(stripFences(raw))
+    } catch (err) {
+      console.warn('[logos] Failed to parse Gemini logo response:', raw.slice(0, 300))
+    }
+
+    for (const item of Array.isArray(suggestions) ? suggestions : []) {
+      if (!item?.ticker || !item?.logoUrl) continue
+      try {
+        const res = await fetch(item.logoUrl, { redirect: 'follow' })
+        if (!res.ok) {
+          console.warn(`[logos] ${item.ticker}: fetch ${res.status} from ${item.logoUrl}`)
+          continue
+        }
+        const ct = (res.headers.get('content-type') || 'image/png').split(';')[0].trim()
+        if (!ct.startsWith('image/')) {
+          console.warn(`[logos] ${item.ticker}: non-image content-type ${ct}`)
+          continue
+        }
+        const buf = Buffer.from(await res.arrayBuffer())
+        if (buf.length === 0 || buf.length > 2 * 1024 * 1024) {
+          console.warn(`[logos] ${item.ticker}: skipping (size ${buf.length})`)
+          continue
+        }
+        const safe = safeTicker(item.ticker)
+        const objectPath = `logos/${safe}.${extFromContentType(ct)}`
+        const file = bucket.file(objectPath)
+        await file.save(buf, {
+          contentType: ct,
+          metadata: { cacheControl: 'public, max-age=31536000, immutable' },
+        })
+        await file.makePublic()
+        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${objectPath}`
+        await db.collection('logos').doc(safe).set({
+          ticker: item.ticker,
+          logoUrl: publicUrl,
+          sourceUrl: item.logoUrl,
+          contentType: ct,
+          sizeBytes: buf.length,
+          updatedAt: new Date().toISOString(),
+        })
+        resolved[item.ticker] = publicUrl
+        console.log(`[logos] ${item.ticker}: stored ${buf.length}B → ${publicUrl}`)
+      } catch (err) {
+        console.warn(`[logos] ${item.ticker}: ${err.message}`)
+      }
+    }
+  }
+
+  let hits = 0
+  for (const c of companies) {
+    const url = cached[c.ticker] || resolved[c.ticker]
+    if (url) {
+      c.logoUrl = url
+      hits++
+    }
+  }
+  console.log(
+    `[logos] resolved ${hits}/${companies.length} (cached: ${Object.keys(cached).length}, new: ${Object.keys(resolved).length})`,
+  )
+}
+
+const now = new Date()
+const today = now.toISOString().split('T')[0]
+const currentYear = now.getUTCFullYear()
+const lastCompleteYear = currentYear - 1
+const firstYear = lastCompleteYear - 4
+const targetYears = Array.from({ length: 5 }, (_, i) => firstYear + i)
+const excludedYearCeiling = firstYear - 1
+
+const exampleHistoricYields = targetYears
+  .map((y, i) => `        { "year": ${y}, "yield": ${(5.8 + i * 0.35).toFixed(2)}, "dividend": ${(0.35 + i * 0.035).toFixed(3)} }`)
+  .join(',\n')
+const exampleDividendsPerYear = targetYears
+  .map((y, i) => `        { "year": ${y}, "totalAmount": ${(0.35 + i * 0.035).toFixed(3)}, "payments": 2 }`)
+  .join(',\n')
+
+const prompt = `You are a financial data analyst specializing in European equity markets.
+
+CURRENT DATE: ${today}
+CURRENT YEAR: ${currentYear}
+LAST COMPLETE CALENDAR YEAR: ${lastCompleteYear}
+TARGET HISTORIC YEARS (exactly these 5, oldest to newest): ${targetYears.join(', ')}
 
 Return ONLY a raw JSON object. No markdown, no code fences, no explanation — just the JSON.
 
@@ -55,18 +205,10 @@ The JSON must follow this exact schema:
       "marketCap": 70000000000,
       "priceChangePercent": 0.3,
       "historicYields": [
-        { "year": 2020, "yield": 5.8, "dividend": 0.35 },
-        { "year": 2021, "yield": 6.2, "dividend": 0.38 },
-        { "year": 2022, "yield": 7.5, "dividend": 0.40 },
-        { "year": 2023, "yield": 7.0, "dividend": 0.43 },
-        { "year": 2024, "yield": 7.2, "dividend": 0.49 }
+${exampleHistoricYields}
       ],
       "dividendsPerYear": [
-        { "year": 2020, "totalAmount": 0.35, "payments": 2 },
-        { "year": 2021, "totalAmount": 0.38, "payments": 2 },
-        { "year": 2022, "totalAmount": 0.40, "payments": 2 },
-        { "year": 2023, "totalAmount": 0.43, "payments": 2 },
-        { "year": 2024, "totalAmount": 0.49, "payments": 2 }
+${exampleDividendsPerYear}
       ],
       "status": "bullish",
       "pro": {
@@ -87,25 +229,23 @@ The JSON must follow this exact schema:
   ]
 }
 
-Select the top 10 European large-cap companies by dividend yield as of today. Prioritize:
+Select the top 10 European large-cap companies by dividend yield as of ${today}. Prioritize:
 - Companies listed on major EU exchanges: Euronext (Paris/Amsterdam/Brussels), XETRA, Borsa Italiana, BME Spain, Nasdaq Nordic.
 - Sustainable, well-established dividend payers in Utilities, Financials, Energy, Telecoms, Insurance, Consumer Staples.
 - Large caps with market caps above €5B.
 - Rank 1 = highest dividend yield.
 - Include companies from diverse countries (France, Germany, Italy, Spain, Netherlands, etc.).
-- Provide realistic data based on your knowledge as of your training cutoff. The "status" field reflects today's investment outlook.
-- historicYields must have exactly 5 entries (years ${today.slice(0,4) - 5} to ${today.slice(0,4) - 1}).
-- dividendsPerYear must have exactly 5 entries for the same years.`
+
+RECENCY CONSTRAINTS (CRITICAL — do NOT ignore):
+- currentPrice, dividendYield, annualDividend, marketCap MUST reflect values as of ${today}, using the most recent data you have. Use your best estimate of ${currentYear} values — do NOT default to values from ${excludedYearCeiling} or earlier.
+- historicYields MUST contain exactly 5 entries, one for each of these years in order: ${targetYears.join(', ')}. The most recent entry MUST be year ${lastCompleteYear}.
+- dividendsPerYear MUST contain exactly 5 entries for the same years: ${targetYears.join(', ')}. The most recent entry MUST be year ${lastCompleteYear}.
+- Do NOT output any historic entry with year ≤ ${excludedYearCeiling}. Do NOT output entries for ${currentYear} (year not yet complete).
+- The "status" field reflects the investment outlook as of ${today}.`
 
 console.log(`[${new Date().toISOString()}] Calling Gemini API...`)
 
-const result = await ai.models.generateContent({ model: 'gemini-flash-latest', contents: prompt })
-let text = (result.text ?? '').trim()
-
-// Strip markdown code fences if Gemini wraps in them
-if (text.startsWith('```')) {
-  text = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim()
-}
+const text = stripFences(await callGeminiWithRetry(prompt))
 
 let data
 try {
@@ -122,7 +262,11 @@ if (!Array.isArray(data.companies) || data.companies.length === 0) {
 // Ensure generatedAt is present
 data.generatedAt = data.generatedAt ?? new Date().toISOString()
 
-console.log(`[${new Date().toISOString()}] Received ${data.companies.length} companies. Saving to Firestore...`)
+console.log(`[${new Date().toISOString()}] Received ${data.companies.length} companies. Resolving logos...`)
+
+await resolveLogos(data.companies)
+
+console.log(`[${new Date().toISOString()}] Saving to Firestore...`)
 
 await db.collection('ai-recommendations').doc('latest').set(data)
 

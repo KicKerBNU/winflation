@@ -38,6 +38,7 @@ export interface AiCompanyBase {
   status: CompanyStatus
   pro: LocalizedText
   con: LocalizedText
+  logoUrl?: string
 }
 
 export interface AiCompanyCard extends AiCompanyBase {

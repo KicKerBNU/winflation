@@ -50,7 +50,16 @@ export async function fetchAiRecommendationsPhase1(): Promise<AiPhase1Response |
     return firestoreData
   }
 
-  const prompt = `You are a financial analyst specializing in European dividend stocks. Select the top 10 EU-listed dividend stocks for long-term income investors, ranked by investment quality (yield sustainability, dividend growth track record, sector resilience, payout ratio health, and macroeconomic outlook).
+  const today = new Date().toISOString().split('T')[0]
+  const currentYear = new Date().getUTCFullYear()
+  const lastCompleteYear = currentYear - 1
+
+  const prompt = `You are a financial analyst specializing in European dividend stocks.
+
+CURRENT DATE: ${today}
+CURRENT YEAR: ${currentYear}
+
+Select the top 10 EU-listed dividend stocks for long-term income investors as of ${today}, ranked by investment quality (yield sustainability, dividend growth track record, sector resilience, payout ratio health, and macroeconomic outlook).
 
 Return ONLY a raw JSON object — no markdown, no explanation:
 {
@@ -92,7 +101,9 @@ Return ONLY a raw JSON object — no markdown, no explanation:
 
 Rules:
 - Exactly 10 companies, ranked 1–10
-- Only EU-listed companies (Euronext, Xetra, BME, Borsa Italiana, etc.)`
+- Only EU-listed companies (Euronext, Xetra, BME, Borsa Italiana, etc.)
+- currentPrice, dividendYield, annualDividend, marketCap, priceChangePercent MUST reflect the most recent values available as of ${today}. Prefer ${currentYear} data; fall back to late-${lastCompleteYear} if ${currentYear} is unavailable. Do NOT use values from years earlier than ${lastCompleteYear}.
+- The "status" field reflects the investment outlook as of ${today}.`
 
   const clean = await gemini(prompt)
   const data: AiPhase1Response = JSON.parse(clean)
@@ -112,7 +123,20 @@ export async function fetchCompanyHistory(
   const cached = getCache<AiCompanyHistory>(cacheKey)
   if (cached) return cached
 
-  const prompt = `You are a financial analyst. For ${company} (${ticker}), provide the dividend history for the last 5 complete calendar years.
+  const today = now.toISOString().split('T')[0]
+  const currentYear = now.getUTCFullYear()
+  const lastCompleteYear = currentYear - 1
+  const firstYear = lastCompleteYear - 4
+  const targetYears = Array.from({ length: 5 }, (_, i) => firstYear + i)
+  const excludedYearCeiling = firstYear - 1
+
+  const prompt = `You are a financial analyst.
+
+CURRENT DATE: ${today}
+CURRENT YEAR: ${currentYear}
+LAST COMPLETE CALENDAR YEAR: ${lastCompleteYear}
+
+For ${company} (${ticker}), provide the dividend history for exactly these 5 years (oldest to newest): ${targetYears.join(', ')}.
 
 Return ONLY raw JSON — no markdown, no explanation:
 {
@@ -125,8 +149,10 @@ Return ONLY raw JSON — no markdown, no explanation:
 }
 
 Rules:
-- Exactly 5 entries in each array, for the last 5 complete calendar years (oldest to newest)
-- Use realistic historical data based on your knowledge`
+- historicYields MUST contain exactly 5 entries, one for each of: ${targetYears.join(', ')}. Most recent entry = ${lastCompleteYear}.
+- dividendsPerYear MUST contain exactly 5 entries for the same years: ${targetYears.join(', ')}. Most recent entry = ${lastCompleteYear}.
+- Do NOT output any entry with year ≤ ${excludedYearCeiling}. Do NOT output an entry for ${currentYear} (year not yet complete).
+- Use realistic historical data based on your knowledge.`
 
   const clean = await gemini(prompt)
   const data: AiCompanyHistory = JSON.parse(clean)

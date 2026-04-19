@@ -97,19 +97,24 @@ Daily AI-curated list of the top 10 European dividend stocks for long-term incom
 4. When a user visits the page, the app reads from Firestore — no Gemini wait time on the client
 5. If Firestore data is older than 36 hours (e.g. the daily job failed), the app falls back to calling Gemini directly
 
-**Each company card shows:**
+**Magazine-style list (`/ai-recommendation`):**
 
-- Status badge: Bullish / Neutral / Bearish
-- Company name, ticker, country flag, sector, exchange
-- Current price, dividend yield (large), market cap, annual dividend, 1-day price change
-- Pro — one-sentence investment strength (localised to the user's language)
-- Con — one-sentence investment risk (localised to the user's language)
-- 5-year yield history bar chart
-- Dividend payment schedule table
+- Editorial header with kicker pill and serif headline ("High-yield Europe, curated.")
+- **Hero "Pick of the week"** — a dark card for rank #1 with a violet gradient metrics column containing the oversized yield number, the full 5-year yield bar chart with year labels, market cap, and 1-day price change. Left column is the serif company headline, localised thesis paragraph, and a pull-quote blockquote built from the localised con
+- **"Also in the ranking"** — a 2-column clickable-card grid for ranks 2–10 with status dot, serif company name, ticker/country/sector meta, a 2-line thesis, the current yield and a compact 5-year yield bar chart with year labels
+- Every card (hero + ranking) is a link to the company detail page
 
-Phase 2 data (per-company historical charts) is fetched in parallel from Gemini after the initial list loads, so cards appear progressively.
+**Company detail page (`/ai-recommendation/:ticker`):**
 
-**Route:** `/ai-recommendation`
+- Back link to the picks list
+- Company header with logo, rank, status badge, ticker, country flag, sector, exchange
+- Key metrics grid: yield, price + 1-day change, annual dividend, market cap
+- **Yield & dividend evolution line chart** — dual-axis Chart.js line (yield % on left, dividend per share on right) over the last 5 years
+- 5-year yield bar chart with year labels
+- Dividends-per-year table with total amount and payment frequency
+- Pro / Con cards — localised to the user's language
+
+Phase 2 data (per-company 5-year history) is fetched in parallel from Gemini after the initial list loads, so sparklines and charts fade in progressively.
 
 ---
 
