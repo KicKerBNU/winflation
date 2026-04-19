@@ -35,6 +35,17 @@ const bucket = getStorage().bucket()
 // Init Gemini
 const ai = new GoogleGenAI({ apiKey: geminiKey })
 
+async function fetchEcbDepositRate() {
+  const url =
+    'https://data-api.ecb.europa.eu/service/data/FM/B.U2.EUR.4F.KR.DFR.LEV?format=jsondata&lastNObservations=1'
+  const res = await fetch(url)
+  if (!res.ok) throw new Error(`ECB API error: ${res.status}`)
+  const data = await res.json()
+  const series = Object.values(data.dataSets[0].series)[0]
+  const obs = Object.values(series.observations)[0]
+  return obs[0]
+}
+
 async function callGeminiWithRetry(prompt) {
   for (let attempt = 0; attempt < 4; attempt++) {
     try {
@@ -170,6 +181,12 @@ const firstYear = lastCompleteYear - 4
 const targetYears = Array.from({ length: 5 }, (_, i) => firstYear + i)
 const excludedYearCeiling = firstYear - 1
 
+const ecbDepositRate = await fetchEcbDepositRate()
+const minYield = +(ecbDepositRate * 2).toFixed(2)
+console.log(
+  `[${new Date().toISOString()}] ECB deposit rate: ${ecbDepositRate}% — enforcing min dividend yield of ${minYield}% (2× ECB).`,
+)
+
 const exampleHistoricYields = targetYears
   .map((y, i) => `        { "year": ${y}, "yield": ${(5.8 + i * 0.35).toFixed(2)}, "dividend": ${(0.35 + i * 0.035).toFixed(3)} }`)
   .join(',\n')
@@ -236,6 +253,12 @@ Select the top 10 European large-cap companies by dividend yield as of ${today}.
 - Rank 1 = highest dividend yield.
 - Include companies from diverse countries (France, Germany, Italy, Spain, Netherlands, etc.).
 
+YIELD THRESHOLD (HARD REQUIREMENT — ABSOLUTE):
+- The ECB deposit facility rate is currently ${ecbDepositRate}%.
+- Every company's current dividendYield MUST be STRICTLY GREATER THAN ${minYield}% (which is 2× the ECB deposit rate).
+- Do NOT include any company with dividendYield ≤ ${minYield}%. If a candidate's yield is not clearly above ${minYield}%, exclude it and pick a different one.
+- Prefer candidates with yield comfortably above ${minYield}% (e.g. 5%+) to leave headroom.
+
 RECENCY CONSTRAINTS (CRITICAL — do NOT ignore):
 - currentPrice, dividendYield, annualDividend, marketCap MUST reflect values as of ${today}, using the most recent data you have. Use your best estimate of ${currentYear} values — do NOT default to values from ${excludedYearCeiling} or earlier.
 - historicYields MUST contain exactly 5 entries, one for each of these years in order: ${targetYears.join(', ')}. The most recent entry MUST be year ${lastCompleteYear}.
@@ -257,6 +280,24 @@ try {
 
 if (!Array.isArray(data.companies) || data.companies.length === 0) {
   throw new Error('Invalid response: missing companies array')
+}
+
+// Defensive yield filter — drop anything Gemini returned below the 2× ECB threshold.
+const beforeCount = data.companies.length
+data.companies = data.companies
+  .filter((c) => typeof c.dividendYield === 'number' && c.dividendYield > minYield)
+  .sort((a, b) => b.dividendYield - a.dividendYield)
+  .map((c, i) => ({ ...c, rank: i + 1 }))
+
+if (data.companies.length === 0) {
+  throw new Error(
+    `All ${beforeCount} returned companies had yield ≤ ${minYield}%. Gemini ignored the yield threshold — not saving.`,
+  )
+}
+if (data.companies.length < beforeCount) {
+  console.warn(
+    `[yield-filter] Dropped ${beforeCount - data.companies.length}/${beforeCount} companies below ${minYield}% and re-ranked.`,
+  )
 }
 
 // Ensure generatedAt is present

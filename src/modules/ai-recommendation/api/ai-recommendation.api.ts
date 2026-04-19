@@ -2,6 +2,7 @@ import { GoogleGenAI } from '@google/genai'
 import { doc, getDoc } from 'firebase/firestore'
 import { db } from '@/plugins/firebase'
 import { getCache, setCache } from '@/services/localCache'
+import { fetchEcbRates } from '@/modules/interest-rate/api/interest-rate.api'
 import type { AiPhase1Response, AiCompanyHistory } from '../domain/ai-recommendation.types'
 
 const PHASE1_CACHE_KEY = 'ai-recommendation:phase1:latest'
@@ -54,12 +55,21 @@ export async function fetchAiRecommendationsPhase1(): Promise<AiPhase1Response |
   const currentYear = new Date().getUTCFullYear()
   const lastCompleteYear = currentYear - 1
 
+  const ecbRates = await fetchEcbRates()
+  const ecbDepositRate = ecbRates.find((r) => r.type === 'deposit')?.rate ?? 2
+  const minYield = +(ecbDepositRate * 2).toFixed(2)
+
   const prompt = `You are a financial analyst specializing in European dividend stocks.
 
 CURRENT DATE: ${today}
 CURRENT YEAR: ${currentYear}
 
 Select the top 10 EU-listed dividend stocks for long-term income investors as of ${today}, ranked by investment quality (yield sustainability, dividend growth track record, sector resilience, payout ratio health, and macroeconomic outlook).
+
+YIELD THRESHOLD (HARD REQUIREMENT — ABSOLUTE):
+- The ECB deposit facility rate is currently ${ecbDepositRate}%.
+- Every company's current dividendYield MUST be STRICTLY GREATER THAN ${minYield}% (which is 2× the ECB deposit rate).
+- Do NOT include any company with dividendYield ≤ ${minYield}%. If a candidate does not clearly exceed ${minYield}%, exclude it and pick a different one.
 
 Return ONLY a raw JSON object — no markdown, no explanation:
 {
@@ -107,6 +117,21 @@ Rules:
 
   const clean = await gemini(prompt)
   const data: AiPhase1Response = JSON.parse(clean)
+
+  const before = data.companies.length
+  data.companies = data.companies
+    .filter((c) => typeof c.dividendYield === 'number' && c.dividendYield > minYield)
+    .sort((a, b) => b.dividendYield - a.dividendYield)
+    .map((c, i) => ({ ...c, rank: i + 1 }))
+  if (data.companies.length === 0) {
+    throw new Error(`AI returned ${before} companies, none above ${minYield}% yield threshold.`)
+  }
+  if (data.companies.length < before) {
+    console.warn(
+      `[AI Recommendations] Dropped ${before - data.companies.length}/${before} companies below ${minYield}% yield.`,
+    )
+  }
+
   setCache(PHASE1_CACHE_KEY, data)
   return data
 }
