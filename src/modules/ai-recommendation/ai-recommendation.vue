@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { useAiRecommendationStore } from './store/ai-recommendation.store'
 import type { AiCompanyCard, YearlyYield, CompanyStatus } from './domain/ai-recommendation.types'
 
-const { t } = useI18n()
+const { t, locale } = useI18n()
 const store = useAiRecommendationStore()
 
 store.init()
@@ -300,7 +300,7 @@ const statusConfig: Record<CompanyStatus, { label: string; icon: string; cardBor
                 <FontAwesomeIcon icon="thumbs-up" class="text-sm text-emerald-600 dark:text-emerald-400" />
                 <span class="text-xs font-semibold text-emerald-700 dark:text-emerald-300">{{ t('aiRecommendation.proTitle') }}</span>
               </div>
-              <p class="text-xs leading-relaxed text-emerald-700 dark:text-emerald-300">{{ company.pro }}</p>
+              <p class="text-xs leading-relaxed text-emerald-700 dark:text-emerald-300">{{ company.pro[locale as keyof typeof company.pro] ?? company.pro['en-US'] }}</p>
             </div>
 
             <!-- Con -->
@@ -309,7 +309,7 @@ const statusConfig: Record<CompanyStatus, { label: string; icon: string; cardBor
                 <FontAwesomeIcon icon="thumbs-down" class="text-sm text-red-500 dark:text-red-400" />
                 <span class="text-xs font-semibold text-red-700 dark:text-red-300">{{ t('aiRecommendation.conTitle') }}</span>
               </div>
-              <p class="text-xs leading-relaxed text-red-700 dark:text-red-300">{{ company.con }}</p>
+              <p class="text-xs leading-relaxed text-red-700 dark:text-red-300">{{ company.con[locale as keyof typeof company.con] ?? company.con['en-US'] }}</p>
             </div>
           </div>
 

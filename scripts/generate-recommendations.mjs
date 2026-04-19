@@ -1,20 +1,34 @@
-import { GoogleGenerativeAI } from '@google/generative-ai'
+import { GoogleGenAI } from '@google/genai'
 import { initializeApp, cert } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 
 const geminiKey = process.env.GEMINI_API_KEY
-const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT)
+const firebaseJsonRaw = process.env.FIREBASE_SERVICE_ACCOUNT
 
-if (!geminiKey) throw new Error('Missing GEMINI_API_KEY')
-if (!serviceAccount) throw new Error('Missing FIREBASE_SERVICE_ACCOUNT')
+if (!geminiKey?.trim()) {
+  throw new Error(
+    'Missing GEMINI_API_KEY: add repository secret GEMINI_API_KEY (see .github/workflows/ai-daily-recommendations.yml).',
+  )
+}
+if (!firebaseJsonRaw?.trim()) {
+  throw new Error(
+    'Missing FIREBASE_SERVICE_ACCOUNT: add the Firebase Admin service account JSON as repository secret FIREBASE_SERVICE_ACCOUNT (Firebase Console → Project settings → Service accounts → Generate new private key).',
+  )
+}
+
+let serviceAccount
+try {
+  serviceAccount = JSON.parse(firebaseJsonRaw)
+} catch (err) {
+  throw new Error(`FIREBASE_SERVICE_ACCOUNT must be valid JSON: ${err.message}`)
+}
 
 // Init Firebase Admin
 initializeApp({ credential: cert(serviceAccount) })
 const db = getFirestore()
 
 // Init Gemini
-const genAI = new GoogleGenerativeAI(geminiKey)
-const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' })
+const ai = new GoogleGenAI({ apiKey: geminiKey })
 
 const today = new Date().toISOString().split('T')[0]
 
@@ -55,8 +69,20 @@ The JSON must follow this exact schema:
         { "year": 2024, "totalAmount": 0.49, "payments": 2 }
       ],
       "status": "bullish",
-      "pro": "One sentence explaining the main investment strength of this company today.",
-      "con": "One sentence explaining the main risk or weakness of this company today."
+      "pro": {
+        "en-US": "One sentence in English explaining the main investment strength.",
+        "pt-BR": "Same sentence in Brazilian Portuguese.",
+        "fr-FR": "Same sentence in French.",
+        "it-IT": "Same sentence in Italian.",
+        "es-ES": "Same sentence in Spanish."
+      },
+      "con": {
+        "en-US": "One sentence in English explaining the main investment risk.",
+        "pt-BR": "Same sentence in Brazilian Portuguese.",
+        "fr-FR": "Same sentence in French.",
+        "it-IT": "Same sentence in Italian.",
+        "es-ES": "Same sentence in Spanish."
+      }
     }
   ]
 }
@@ -73,8 +99,8 @@ Select the top 10 European large-cap companies by dividend yield as of today. Pr
 
 console.log(`[${new Date().toISOString()}] Calling Gemini API...`)
 
-const result = await model.generateContent(prompt)
-let text = result.response.text().trim()
+const result = await ai.models.generateContent({ model: 'gemini-flash-latest', contents: prompt })
+let text = (result.text ?? '').trim()
 
 // Strip markdown code fences if Gemini wraps in them
 if (text.startsWith('```')) {

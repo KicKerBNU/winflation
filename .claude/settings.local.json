@@ -1,18 +1,4 @@
 {
-  "hooks": {
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "cd /Users/evertonbuzzi/Dev/winflation.eu && yarn build 2>&1 | tail -3",
-            "timeout": 120,
-            "statusMessage": "Running yarn build..."
-          }
-        ]
-      }
-    ]
-  },
   "permissions": {
     "allow": [
       "Bash(npm run:*)",
@@ -62,7 +48,24 @@
       "Bash(python3 -c ' *)",
       "Skill(update-config)",
       "Skill(update-config:*)",
-      "Bash(yarn build *)"
+      "Bash(yarn build *)",
+      "Bash(xargs ls *)",
+      "Bash(npm run *)",
+      "Bash(echo \"PID $!\")"
+    ]
+  },
+  "hooks": {
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd /Users/evertonbuzzi/Dev/winflation.eu && yarn build 2>&1 | tail -3",
+            "timeout": 120,
+            "statusMessage": "Running yarn build..."
+          }
+        ]
+      }
     ]
   }
 }

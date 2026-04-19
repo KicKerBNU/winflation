@@ -1,8 +1,25 @@
 import { GoogleGenAI } from '@google/genai'
+import { doc, getDoc } from 'firebase/firestore'
+import { db } from '@/plugins/firebase'
 import { getCache, setCache } from '@/services/localCache'
 import type { AiPhase1Response, AiCompanyHistory } from '../domain/ai-recommendation.types'
 
 const PHASE1_CACHE_KEY = 'ai-recommendation:phase1:latest'
+
+async function fetchPhase1FromFirestore(): Promise<AiPhase1Response | null> {
+  try {
+    const snap = await getDoc(doc(db, 'ai-recommendations', 'latest'))
+    if (!snap.exists()) return null
+    const data = snap.data() as AiPhase1Response
+    // Reject if older than 36 hours (gives a 4h buffer past the daily 08:00 UTC run)
+    const generatedAt = new Date(data.generatedAt).getTime()
+    if (Date.now() - generatedAt > 36 * 60 * 60 * 1000) return null
+    return data
+  } catch (err) {
+    console.warn('[AI Recommendations] Firestore read failed, falling back to Gemini:', err)
+    return null
+  }
+}
 
 async function gemini(prompt: string): Promise<string> {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY
@@ -27,6 +44,12 @@ export async function fetchAiRecommendationsPhase1(): Promise<AiPhase1Response |
   const cached = getCache<AiPhase1Response>(PHASE1_CACHE_KEY)
   if (cached) return cached
 
+  const firestoreData = await fetchPhase1FromFirestore()
+  if (firestoreData) {
+    setCache(PHASE1_CACHE_KEY, firestoreData)
+    return firestoreData
+  }
+
   const prompt = `You are a financial analyst specializing in European dividend stocks. Select the top 10 EU-listed dividend stocks for long-term income investors, ranked by investment quality (yield sustainability, dividend growth track record, sector resilience, payout ratio health, and macroeconomic outlook).
 
 Return ONLY a raw JSON object — no markdown, no explanation:
@@ -49,8 +72,20 @@ Return ONLY a raw JSON object — no markdown, no explanation:
       "marketCap": <market cap in full units>,
       "priceChangePercent": <estimated recent 1-day change %>,
       "status": "<bullish|neutral|bearish>",
-      "pro": "<one concise sentence — main investment strength>",
-      "con": "<one concise sentence — main investment risk>"
+      "pro": {
+        "en-US": "<one concise sentence in English — main investment strength>",
+        "pt-BR": "<same sentence in Brazilian Portuguese>",
+        "fr-FR": "<same sentence in French>",
+        "it-IT": "<same sentence in Italian>",
+        "es-ES": "<same sentence in Spanish>"
+      },
+      "con": {
+        "en-US": "<one concise sentence in English — main investment risk>",
+        "pt-BR": "<same sentence in Brazilian Portuguese>",
+        "fr-FR": "<same sentence in French>",
+        "it-IT": "<same sentence in Italian>",
+        "es-ES": "<same sentence in Spanish>"
+      }
     }
   ]
 }

@@ -12,6 +12,14 @@ export interface YearlyDividend {
 
 export type CompanyStatus = 'bullish' | 'neutral' | 'bearish'
 
+export type LocalizedText = {
+  'en-US': string
+  'pt-BR': string
+  'fr-FR': string
+  'it-IT': string
+  'es-ES': string
+}
+
 export interface AiCompanyBase {
   rank: number
   ticker: string
@@ -28,8 +36,8 @@ export interface AiCompanyBase {
   marketCap: number
   priceChangePercent: number
   status: CompanyStatus
-  pro: string
-  con: string
+  pro: LocalizedText
+  con: LocalizedText
 }
 
 export interface AiCompanyCard extends AiCompanyBase {
