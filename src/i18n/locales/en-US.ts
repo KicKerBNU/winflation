@@ -4,7 +4,7 @@ export default {
     interestRate: 'Interest Rate',
     inflation: 'Inflation',
     dividends: 'Dividends',
-    aiRecommendation: 'AI Picks',
+    aiRecommendation: 'Picks',
     followed: 'Followed',
   },
   dashboard: {

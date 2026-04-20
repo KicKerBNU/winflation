@@ -13,7 +13,6 @@ const auth = useAuthStore()
 
 const baseNavItems = [
   { to: '/', icon: 'gauge-high', labelKey: 'nav.dashboard' },
-  { to: '/interest-rate', icon: 'percent', labelKey: 'nav.interestRate' },
   { to: '/inflation', icon: 'arrow-trend-up', labelKey: 'nav.inflation' },
   { to: '/dividends', icon: 'coins', labelKey: 'nav.dividends' },
   { to: '/ai-recommendation', icon: 'robot', labelKey: 'nav.aiRecommendation' },

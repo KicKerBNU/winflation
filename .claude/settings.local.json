@@ -53,7 +53,12 @@
       "Bash(npm run *)",
       "Bash(echo \"PID $!\")",
       "Bash(node --check scripts/generate-recommendations.mjs)",
-      "Bash(node --check /Users/evertonbuzzi/Dev/winflation.eu/scripts/generate-recommendations.mjs)"
+      "Bash(node --check /Users/evertonbuzzi/Dev/winflation.eu/scripts/generate-recommendations.mjs)",
+      "Bash(gh auth *)",
+      "Bash(gh workflow *)",
+      "Bash(gh run *)",
+      "Bash(gh secret *)",
+      "Bash(echo \"---EXIT: $?---\")"
     ]
   },
   "hooks": {
