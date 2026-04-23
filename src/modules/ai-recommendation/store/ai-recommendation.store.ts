@@ -19,11 +19,16 @@ export const useAiRecommendationStore = defineStore('ai-recommendation', () => {
       const phase1 = await fetchAiRecommendationsPhase1()
       if (!phase1) return
       generatedAt.value = phase1.generatedAt
-      cards.value = phase1.companies.map((c) => ({ ...c, historicYields: null, dividendsPerYear: null }))
+      cards.value = phase1.companies.map((c) => ({
+        ...c,
+        historicYields: c.historicYields ?? null,
+        dividendsPerYear: c.dividendsPerYear ?? null,
+      }))
       isLoading.value = false
 
       await Promise.all(
         cards.value.map(async (card, idx) => {
+          if (card.historicYields && card.dividendsPerYear) return
           try {
             const history = await fetchCompanyHistory(card.ticker, card.company, card.currency)
             if (history) {

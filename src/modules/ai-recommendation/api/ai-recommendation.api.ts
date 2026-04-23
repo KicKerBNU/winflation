@@ -42,14 +42,18 @@ async function gemini(prompt: string): Promise<string> {
 }
 
 export async function fetchAiRecommendationsPhase1(): Promise<AiPhase1Response | null> {
-  const cached = getCache<AiPhase1Response>(PHASE1_CACHE_KEY)
-  if (cached) return cached
-
+  // 1. Firestore (primary — written daily by the GitHub Actions cron)
   const firestoreData = await fetchPhase1FromFirestore()
   if (firestoreData) {
     setCache(PHASE1_CACHE_KEY, firestoreData)
     return firestoreData
   }
+
+  // 2. localStorage (fallback if Firestore is unreachable or stale)
+  const cached = getCache<AiPhase1Response>(PHASE1_CACHE_KEY)
+  if (cached) return cached
+
+  // 3. Real-time Gemini (worst case — slow prompt, ~30s)
 
   const today = new Date().toISOString().split('T')[0]
   const currentYear = new Date().getUTCFullYear()

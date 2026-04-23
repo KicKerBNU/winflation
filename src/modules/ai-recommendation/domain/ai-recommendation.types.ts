@@ -51,9 +51,14 @@ export interface AiCompanyHistory {
   dividendsPerYear: YearlyDividend[]
 }
 
+export interface AiPhase1Company extends AiCompanyBase {
+  historicYields?: YearlyYield[]
+  dividendsPerYear?: YearlyDividend[]
+}
+
 export interface AiPhase1Response {
   generatedAt: string
-  companies: AiCompanyBase[]
+  companies: AiPhase1Company[]
 }
 
 /** @deprecated use AiCompanyCard */
