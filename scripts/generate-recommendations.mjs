@@ -2,6 +2,7 @@ import { GoogleGenAI } from '@google/genai'
 import { initializeApp, cert } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
 import { getStorage } from 'firebase-admin/storage'
+import { randomUUID } from 'node:crypto'
 
 const geminiKey = process.env.GEMINI_API_KEY
 const firebaseJsonRaw = process.env.FIREBASE_SERVICE_ACCOUNT
@@ -79,6 +80,10 @@ function extFromContentType(ct) {
   return 'png'
 }
 
+function buildFirebaseDownloadUrl(bucketName, objectPath, token) {
+  return `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodeURIComponent(objectPath)}?alt=media&token=${token}`
+}
+
 async function resolveLogos(companies) {
   // 1. Check Firestore cache (logos collection accumulates over time, independent of daily rotation)
   const cached = {}
@@ -138,12 +143,15 @@ ${list}`
         const safe = safeTicker(item.ticker)
         const objectPath = `logos/${safe}.${extFromContentType(ct)}`
         const file = bucket.file(objectPath)
+        const token = randomUUID()
         await file.save(buf, {
           contentType: ct,
-          metadata: { cacheControl: 'public, max-age=31536000, immutable' },
+          metadata: {
+            cacheControl: 'public, max-age=31536000, immutable',
+            metadata: { firebaseStorageDownloadTokens: token },
+          },
         })
-        await file.makePublic()
-        const publicUrl = `https://storage.googleapis.com/${bucket.name}/${objectPath}`
+        const publicUrl = buildFirebaseDownloadUrl(bucket.name, objectPath, token)
         await db.collection('logos').doc(safe).set({
           ticker: item.ticker,
           logoUrl: publicUrl,
