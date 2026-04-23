@@ -166,6 +166,7 @@ export default {
     companyNotFound: 'Empresa no encontrada en las selecciones actuales.',
     loadingHistory: 'Cargando historial...',
     evolutionTitle: 'Evolución de rentabilidad y dividendos',
+    yearlyYieldLabel: 'rentabilidad {yield}%',
     perShareYear: 'por acción / año',
   },
   auth: {

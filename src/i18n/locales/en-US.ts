@@ -166,6 +166,7 @@ export default {
     companyNotFound: 'Company not found in the current picks.',
     loadingHistory: 'Loading history...',
     evolutionTitle: 'Yield & dividend evolution',
+    yearlyYieldLabel: '{yield}% yield',
     perShareYear: 'per share / year',
   },
   auth: {

@@ -59,12 +59,25 @@ function localized(text: LocalizedText | undefined): string {
   return text[locale.value as keyof LocalizedText] ?? text['en-US']
 }
 
+function yieldForYear(year: number): number | null {
+  const rows = company.value?.historicYields
+  if (!rows) return null
+  const match = rows.find((r) => r.year === year)
+  return typeof match?.yield === 'number' ? match.yield : null
+}
+
 function maxYield(values: YearlyYield[]): number {
   return Math.max(...values.map((h) => h.yield), 0.1)
 }
 
 function barHeightPx(h: YearlyYield, values: YearlyYield[], max: number): string {
   return `${Math.max((h.yield / maxYield(values)) * max, 4)}px`
+}
+
+function yieldAxisMax(yields: number[]): number {
+  const maxYieldValue = Math.max(...yields, 0)
+  // Keep chart scale stable for comparison, but allow headroom above unusual outliers.
+  return Math.max(15, Math.ceil((maxYieldValue + 0.5) * 2) / 2)
 }
 
 const statusConfig: Record<CompanyStatus, { label: string; dot: string; bg: string; text: string; icon: string }> = {
@@ -103,10 +116,17 @@ function buildEvolutionChart() {
   const gridColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.06)'
   const labelColor = isDark ? '#9ca3af' : '#6b7280'
 
-  const rows = company.value.historicYields
+  const rows = [...company.value.historicYields]
+    .map((r) => ({
+      year: Number(r.year),
+      yield: Number(r.yield),
+      dividend: Number(r.dividend),
+    }))
+    .sort((a, b) => a.year - b.year)
   const labels = rows.map((r) => String(r.year))
   const yields = rows.map((r) => r.yield)
   const dividends = rows.map((r) => r.dividend)
+  const yieldMax = yieldAxisMax(yields)
 
   evolutionChart = new Chart(evolutionCanvas.value, {
     type: 'line',
@@ -119,7 +139,7 @@ function buildEvolutionChart() {
           borderColor: '#7c3aed',
           backgroundColor: 'rgba(124, 58, 237, 0.12)',
           borderWidth: 2.5,
-          tension: 0.3,
+          tension: 0,
           pointRadius: 4,
           pointHoverRadius: 6,
           pointBackgroundColor: '#7c3aed',
@@ -132,7 +152,7 @@ function buildEvolutionChart() {
           borderColor: '#06b6d4',
           backgroundColor: 'transparent',
           borderWidth: 2,
-          tension: 0.3,
+          tension: 0,
           pointRadius: 3,
           pointHoverRadius: 5,
           pointBackgroundColor: '#06b6d4',
@@ -166,6 +186,8 @@ function buildEvolutionChart() {
         x: { grid: { color: gridColor }, ticks: { color: labelColor } },
         y: {
           position: 'left',
+          min: 0,
+          max: yieldMax,
           grid: { color: gridColor },
           ticks: { color: labelColor, callback: (v) => formatPercentTick(v) },
         },
@@ -389,6 +411,12 @@ watch(() => themeStore.isDark, () => {
               <div class="flex items-center gap-3">
                 <span class="font-bold text-gray-900 dark:text-white">
                   {{ formatPrice(d.totalAmount, company.currency) }}
+                </span>
+                <span
+                  v-if="yieldForYear(d.year) !== null"
+                  class="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-700 dark:border-violet-800/40 dark:bg-violet-900/20 dark:text-violet-300"
+                >
+                  {{ t('aiRecommendation.yearlyYieldLabel', { yield: yieldForYear(d.year)!.toFixed(1) }) }}
                 </span>
                 <span class="rounded-full border border-gray-300 px-2 py-0.5 text-xs text-gray-500 dark:border-gray-600 dark:text-gray-400">
                   {{ d.payments }}x
