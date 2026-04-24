@@ -6,6 +6,7 @@ import { dividendsRoutes } from '@/modules/dividends/dividends.routes'
 import { aiRecommendationRoutes } from '@/modules/ai-recommendation/ai-recommendation.routes'
 import { authRoutes } from '@/modules/auth/auth.routes'
 import { followRoutes } from '@/modules/follow/follow.routes'
+import { mineralsRoutes } from '@/modules/minerals/minerals.routes'
 import { useAuthStore } from '@/modules/auth/store/auth.store'
 
 export const router = createRouter({
@@ -16,6 +17,7 @@ export const router = createRouter({
     ...inflationRoutes,
     ...dividendsRoutes,
     ...aiRecommendationRoutes,
+    ...mineralsRoutes,
     ...authRoutes,
     ...followRoutes,
   ],

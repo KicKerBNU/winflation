@@ -11,17 +11,25 @@ const route = useRoute()
 const themeStore = useThemeStore()
 const auth = useAuthStore()
 
-const baseNavItems = [
-  { to: '/', icon: 'gauge-high', labelKey: 'nav.dashboard' },
+const dashboardItem = { to: '/', icon: 'gauge-high', labelKey: 'nav.dashboard' }
+
+const sharedNavItems = [
   { to: '/inflation', icon: 'arrow-trend-up', labelKey: 'nav.inflation' },
   { to: '/dividends', icon: 'coins', labelKey: 'nav.dividends' },
   { to: '/ai-recommendation', icon: 'robot', labelKey: 'nav.aiRecommendation' },
+  { to: '/minerals', icon: 'gem', labelKey: 'nav.minerals' },
 ]
 
-const navItems = computed(() =>
+const followedItem = { to: '/followed', icon: 'star', labelKey: 'nav.followed' }
+
+const desktopNavItems = computed(() =>
   auth.isAuthenticated
-    ? [...baseNavItems, { to: '/followed', icon: 'star', labelKey: 'nav.followed' }]
-    : baseNavItems,
+    ? [dashboardItem, ...sharedNavItems, followedItem]
+    : [dashboardItem, ...sharedNavItems],
+)
+
+const mobileNavItems = computed(() =>
+  auth.isAuthenticated ? [...sharedNavItems, followedItem] : sharedNavItems,
 )
 
 function isActive(path: string) {
@@ -57,7 +65,7 @@ const hideChrome = computed(() => ['login', 'register'].includes(route.name as s
       <!-- Navigation -->
       <nav class="flex-1 space-y-1 px-3 py-4">
         <RouterLink
-          v-for="item in navItems"
+          v-for="item in desktopNavItems"
           :key="item.to"
           :to="item.to"
           class="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors"
@@ -117,7 +125,7 @@ const hideChrome = computed(() => ['login', 'register'].includes(route.name as s
     >
       <div class="flex h-16 items-center justify-around">
         <RouterLink
-          v-for="item in navItems"
+          v-for="item in mobileNavItems"
           :key="item.to"
           :to="item.to"
           class="flex cursor-pointer flex-col items-center gap-0.5 px-4 py-2 text-xs font-medium transition-colors"

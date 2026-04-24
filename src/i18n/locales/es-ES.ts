@@ -6,6 +6,7 @@ export default {
     dividends: 'Dividendos',
     aiRecommendation: 'Picks',
     followed: 'Siguiendo',
+    minerals: 'Minerales',
   },
   dashboard: {
     title: 'Resumen',
@@ -205,6 +206,245 @@ export default {
       network: 'Error de red — comprueba tu conexión.',
       tooManyRequests: 'Demasiados intentos. Inténtalo en unos minutos.',
       generic: 'Algo salió mal. Inténtalo de nuevo.',
+    },
+  },
+  minerals: {
+    title: 'Minerales Raros',
+    subtitle: 'Dónde el mundo obtiene los metales que alimentan vehículos eléctricos, turbinas eólicas y hardware de IA',
+    loading: 'Cargando datos de minerales...',
+    dataAsOf: 'Datos a {date}',
+    warning: {
+      title: 'Advertencia clave al inversor — tomadores de precio',
+      body: 'Estas empresas son tomadoras de precio. Sus cotizaciones se mueven con fuerza según el precio global de NdPr (neodimio-praseodimio). Si China inunda el mercado para hundir precios, los márgenes se comprimen al instante. En 2026, los gobiernos occidentales otorgan subsidios y precios mínimos para mantener viable la oferta fuera de China.',
+    },
+    mapTitle: 'Reservas y operaciones globales',
+    mapHint: 'Haz clic en un marcador para ver los minerales y empresas activas en el país.',
+    countriesTitle: 'Países clave',
+    countriesHint: 'Ordenados por número de minerales críticos producidos.',
+    mineralsTitle: 'Minerales críticos para 2026',
+    usedFor: 'Usado para',
+    viewCountry: 'Ver detalles del país',
+    companiesCount: '{count} empresas | {count} empresa | {count} empresas',
+    why: {
+      title: 'Por qué los minerales raros importan a los inversores',
+      body: 'China aún controla ~60% de la producción mundial de tierras raras y un dominio aún mayor sobre óxidos refinados y fabricación de imanes. A medida que los VE, turbinas eólicas, robótica y defensa escalan, los gobiernos occidentales están respaldando nuevas minas y refinerías fuera de China, creando una rara oportunidad de inversión en un mercado estructuralmente monopolizado durante dos décadas.',
+    },
+    category: {
+      all: 'Todos',
+      magnet: 'Metales de imán',
+      battery: 'Batería',
+      other: 'Otros',
+    },
+    entries: {
+      Nd: {
+        name: 'Neodimio',
+        description: 'Parte del "par de potencia" con el Praseodimio, forma la columna vertebral de los imanes permanentes en motores eléctricos.',
+        use: 'Imanes permanentes para motores de VE, turbinas eólicas y electrónica de consumo.',
+      },
+      Pr: {
+        name: 'Praseodimio',
+        description: 'Emparejado con Neodimio en aleaciones NdPr — juntos dominan el mercado de imanes de alto rendimiento.',
+        use: 'Imanes permanentes de alta resistencia, aleaciones aeroespaciales.',
+      },
+      Dy: {
+        name: 'Disprosio',
+        description: 'Tierra rara "pesada" añadida a los imanes para que mantengan su fuerza a altas temperaturas.',
+        use: 'Imanes de alta temperatura para VEs y sistemas de defensa.',
+      },
+      Tb: {
+        name: 'Terbio',
+        description: 'Otra tierra rara pesada que mejora la coercitividad del imán — crítica para motores de alto rendimiento.',
+        use: 'Imanes resistentes al calor, fósforos en pantallas.',
+      },
+      Li: {
+        name: 'Litio',
+        description: 'El metal más ligero y la piedra angular de la química moderna de baterías — no es técnicamente una tierra rara pero se agrupa como "mineral raro".',
+        use: 'Baterías de iones de litio para VEs y almacenamiento en red.',
+      },
+      Co: {
+        name: 'Cobalto',
+        description: 'Estabiliza cátodos en baterías de iones de litio, extendiendo vida útil y seguridad.',
+        use: 'Cátodos de batería (químicas NMC / NCA), superaleaciones.',
+      },
+      Graphite: {
+        name: 'Grafito',
+        description: 'Esencial para ánodos de batería. China domina globalmente la etapa de refinado del grafito "esférico".',
+        use: 'Ánodos en prácticamente todas las baterías de iones de litio.',
+      },
+      La: {
+        name: 'Lantano',
+        description: 'Tierra rara ligera usada en catalizadores y vidrios ópticos especiales.',
+        use: 'Catalizadores de refinería, lentes de cámara, baterías NiMH.',
+      },
+      Ce: {
+        name: 'Cerio',
+        description: 'La tierra rara más abundante, a menudo co-producida con Lantano a partir de minerales de monacita.',
+        use: 'Pulido de vidrio, catalizadores automotrices, aleaciones.',
+      },
+      Monazite: {
+        name: 'Monacita',
+        description: 'Arena mineral con tierras raras, también contiene torio. India tiene enormes reservas en sus arenas de playa.',
+        use: 'Materia prima para concentrados mixtos de tierras raras.',
+      },
+    },
+    countries: {
+      CN: {
+        name: 'China',
+        status: 'Productor dominante de los 17 elementos de tierras raras y grafito; controla precios y refinado global.',
+        companies: {
+          chinaRareEarthGroup: 'Megaempresa estatal creada al fusionar varias empresas más pequeñas para controlar el mercado doméstico.',
+          shengheResources: 'Gran actor global que también invierte en proyectos en el extranjero (EE.UU., Groenlandia).',
+        },
+      },
+      VN: {
+        name: 'Vietnam',
+        status: 'Segundas mayores reservas del mundo (~22Mt); producción creciendo rápidamente con respaldo occidental.',
+        companies: {
+          vtre: 'Trabajando con empresas australianas y coreanas para reactivar la mina Dong Pao, una de las mayores del mundo.',
+          blackstone: 'Explorando activamente proyectos de níquel y tierras raras asociadas en el distrito de Ta Khoa.',
+        },
+      },
+      BR: {
+        name: 'Brasil',
+        status: 'Depósitos masivos en Minas Gerais; recientemente se convirtió en proveedor "Tier 1" para EE.UU.',
+        companies: {
+          serraVerde: 'Opera la mina Pela Ema, una de las únicas fuentes fuera de Asia para los cuatro metales de imán (Nd, Pr, Tb, Dy).',
+          appia: 'Explorando activamente el proyecto de alta ley Cachoeira de Paita.',
+        },
+      },
+      AU: {
+        name: 'Australia',
+        status: 'Principal fuente no china de tierras raras ligeras.',
+        companies: {
+          lynas: {
+            description: 'Mayor productor de tierras raras fuera de China — opera la mina Mount Weld y una planta de separación en Malasia.',
+            catalyst: 'Expansión de la planta de procesamiento en Malasia; escalando producción de NdPr para atender demanda aliada a largo plazo.',
+            contracts: 'Contratos estratégicos de suministro con el Departamento de Defensa de EE. UU. y socios industriales japoneses.',
+          },
+          iluka: 'Construyendo la primera refinería totalmente integrada de tierras raras de Australia.',
+        },
+      },
+      US: {
+        name: 'Estados Unidos',
+        status: 'Escalando producción doméstica de imanes para igualar su extracción.',
+        companies: {
+          mpMaterials: {
+            description: 'Opera la mina Mountain Pass en California; avanzando a producción "mina-a-imán" para eludir fábricas chinas.',
+            catalyst: 'Puesta en marcha de la planta de imanes "10X" en Texas (200M USD) — producción totalmente integrada desde el mineral hasta los imanes terminados.',
+            contracts: 'Acuerdo de offtake relevante con General Motors para suministrar imanes permanentes a motores de VE.',
+          },
+          usaRareEarth: {
+            description: 'Desarrolla el proyecto Round Top en Texas; en abril de 2026 adquirió la mina Pela Ema (Brasil) por 2.800M USD — estrategia "mina-a-imán" que alimenta plantas en EE. UU.',
+            catalyst: 'Integración de la adquisición brasileña (Pela Ema); producción prevista de 6.400 toneladas anuales de óxidos de tierras raras para 2027.',
+            contracts: 'Cadena verticalmente integrada: mineral brasileño alimenta procesamiento y fabricación de imanes en EE. UU. — evita el refino chino.',
+          },
+        },
+      },
+      IN: {
+        name: 'India',
+        status: 'Depósitos masivos de arenas de playa (monacita); actualmente enfocado en uso doméstico de alta tecnología.',
+        companies: {},
+      },
+      CA: {
+        name: 'Canadá',
+        status: 'Expansión rápida en los Territorios del Noroeste y Quebec.',
+        companies: {
+          vitalMetals: 'Primer productor de tierras raras de Canadá, enfocado en el proyecto Nechalacho.',
+          neo: 'Empresa con sede en Canadá operando plantas de procesamiento globalmente (incluyendo Estonia) para producir polvos e imanes de alto valor.',
+        },
+      },
+      ZA: {
+        name: 'Sudáfrica',
+        status: 'Hogar de Steenkampskraal — el depósito de tierras raras de mayor ley del mundo (~14,5% de óxidos vs. el 1-2% típico).',
+        companies: {
+          smm: 'Operadora de la mina Steenkampskraal, ejecutando un plan de seis fases para extraer, procesar y separar los metales a nivel nacional.',
+        },
+      },
+      MW: {
+        name: 'Malaui',
+        status: 'Actor en rápido ascenso en metales para imanes; el proyecto Songwe Hill es uno de los pocos del mundo que ha alcanzado la viabilidad definitiva.',
+        companies: {
+          mkango: {
+            description: 'Construye un canal "mina-a-mercado" desde Songwe Hill — minería en Malaui, separación en Polonia, venta directa a fabricantes europeos.',
+            catalyst: 'Estudio de Factibilidad Definitivo finalizado en marzo/2026. Construcción prevista para 2027; primera producción en 2029. El cierre del financiamiento es el catalizador de corto plazo.',
+            contracts: 'Integración vertical: concentrado de Songwe Hill se envía a una planta de separación dedicada en Polonia para offtake de OEMs europeas.',
+          },
+        },
+      },
+      NA: {
+        name: 'Namibia',
+        status: 'Reservas masivas y una fuente rara de tierras raras pesadas (Dy, Tb) necesarias para imanes de alta temperatura.',
+        companies: {
+          bannerman: 'Principalmente desarrolladora de uranio (Proyecto Etango), pero apoya infraestructura clave para el sector de minerales raros.',
+          ncm: 'Desarrollando el proyecto Lofdal, específicamente rico en tierras raras pesadas para imanes de alta temperatura.',
+        },
+      },
+      BI: {
+        name: 'Burundi',
+        status: 'Hogar de Gakara — históricamente el concentrado de tierras raras de mayor pureza del mundo.',
+        companies: {
+          rainbow: {
+            description: 'Operadora del proyecto Gakara; activo de primer nivel pese a las fricciones políticas con el gobierno sobre el reparto de beneficios. También impulsa un proyecto de bajo costo de extracción desde fosfoyeso en Sudáfrica.',
+            catalyst: 'Piloto exitoso de extracción desde pilas de residuos (fosfoyeso) — CAPEX mucho menor que la minería profunda convencional.',
+            contracts: '50M USD asegurados con la U.S. International Development Finance Corporation (DFC) — fuerte respaldo político occidental.',
+          },
+        },
+      },
+      CD: {
+        name: 'RD Congo',
+        status: 'Produce más del 70% del cobalto mundial — el estabilizador crítico en cátodos de baterías de iones de litio.',
+        companies: {
+          glencore: 'Gran operadora de minas de cobre-cobalto en Katanga — una de las mayores productoras de cobalto del mundo.',
+          cmoc: 'Operadora respaldada por China de Tenke Fungurume y Kisanfu — entre las mayores minas de cobalto del mundo.',
+        },
+      },
+      ML: {
+        name: 'Malí',
+        status: 'Se convirtió en gran productor de litio a finales de 2025 / principios de 2026 cuando el proyecto Goulamina entró en producción.',
+        companies: {
+          ganfeng: 'Operadora del proyecto de litio Goulamina — uno de los mayores depósitos de espodumena de África.',
+          leoLithium: 'Socia de desarrollo en Goulamina, un proyecto de litio insignia que suministra al mercado de baterías para VE.',
+        },
+      },
+    },
+  },
+  mineralsCountry: {
+    back: 'Volver a minerales',
+    notFound: 'País no encontrado en el conjunto de datos.',
+    mineralsTitle: 'Minerales encontrados aquí',
+    companiesTitle: 'Empresas operando sobre el terreno',
+    companiesEmpty: 'Aún no hay operadores públicos importantes rastreados en este país.',
+    mineralsCount: '{count} minerales | {count} mineral | {count} minerales',
+    companiesCount: '{count} empresas | {count} empresa | {count} empresas',
+    financials: {
+      profitability: 'Rentabilidad',
+      dividend: 'Dividendo',
+      mineLife: 'Vida útil',
+      risk: 'Riesgo',
+      revenueYoY: 'Ingresos YoY',
+      netIncome: 'Beneficio neto',
+      primaryCatalyst: 'Catalizador principal',
+      contracts: 'Contratos clave',
+      stages: {
+        producer: 'Productora',
+        developer: 'En desarrollo',
+        exploration: 'Exploración',
+      },
+      profits: {
+        profitable: 'Rentable',
+        transitioning: 'En transición',
+        notYet: 'Aún no',
+      },
+      dividends: {
+        none: 'Ninguno',
+        paying: 'Paga',
+        variable: 'Variable',
+      },
+      risks: {
+        low: 'Bajo',
+        moderate: 'Moderado',
+        high: 'Alto',
+      },
     },
   },
   follow: {

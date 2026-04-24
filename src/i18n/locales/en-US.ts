@@ -6,6 +6,7 @@ export default {
     dividends: 'Dividends',
     aiRecommendation: 'Picks',
     followed: 'Followed',
+    minerals: 'Minerals',
   },
   dashboard: {
     title: 'Overview',
@@ -205,6 +206,245 @@ export default {
       network: 'Network error — please check your connection.',
       tooManyRequests: 'Too many attempts. Try again in a few minutes.',
       generic: 'Something went wrong. Please try again.',
+    },
+  },
+  minerals: {
+    title: 'Rare Minerals',
+    subtitle: 'Where the world sources the metals that power EVs, wind turbines, and AI hardware',
+    loading: 'Loading minerals data...',
+    dataAsOf: 'Data as of {date}',
+    warning: {
+      title: 'Key warning for investors — price takers',
+      body: "These companies are price takers. Their stock prices move violently with the global price of NdPr (neodymium-praseodymium). If China floods the market to crush prices, margins shrink instantly. As of 2026, Western governments are providing subsidies and floor prices to keep non-Chinese supply viable.",
+    },
+    mapTitle: 'Global reserves & operations',
+    mapHint: 'Click a marker to see minerals and companies active in that country.',
+    countriesTitle: 'Key countries',
+    countriesHint: 'Ranked by number of critical minerals produced.',
+    mineralsTitle: 'Critical minerals for 2026',
+    usedFor: 'Used for',
+    viewCountry: 'View country details',
+    companiesCount: '{count} companies | {count} company | {count} companies',
+    why: {
+      title: 'Why rare minerals matter to investors',
+      body: 'China still controls ~60% of global rare-earth production and an even tighter grip on refined oxides and magnet making. As EVs, wind turbines, robotics and defense scale up, Western governments are backing new mines and refineries outside China — creating a rare investable shift in a market that was structurally monopolised for two decades.',
+    },
+    category: {
+      all: 'All',
+      magnet: 'Magnet metals',
+      battery: 'Battery',
+      other: 'Other',
+    },
+    entries: {
+      Nd: {
+        name: 'Neodymium',
+        description: 'Part of the "power pair" with Praseodymium, forming the backbone of permanent magnets in electric motors.',
+        use: 'Permanent magnets for EV drivetrains, wind turbines, and consumer electronics.',
+      },
+      Pr: {
+        name: 'Praseodymium',
+        description: 'Paired with Neodymium in NdPr alloys — together they dominate the high-performance magnet market.',
+        use: 'High-strength permanent magnets, aerospace alloys.',
+      },
+      Dy: {
+        name: 'Dysprosium',
+        description: 'A "heavy" rare earth added to magnets so they keep their strength at high temperatures.',
+        use: 'High-temperature magnets for EVs and defense systems.',
+      },
+      Tb: {
+        name: 'Terbium',
+        description: 'Another heavy rare earth that improves magnet coercivity — critical for high-performance motors.',
+        use: 'Heat-resistant magnets, phosphors in displays.',
+      },
+      Li: {
+        name: 'Lithium',
+        description: 'The lightest metal and the cornerstone of modern battery chemistry — not technically a rare earth but grouped as a "rare mineral".',
+        use: 'Lithium-ion batteries for EVs and grid storage.',
+      },
+      Co: {
+        name: 'Cobalt',
+        description: 'Stabilises cathodes in lithium-ion batteries, extending life and safety.',
+        use: 'Battery cathodes (NMC / NCA chemistries), superalloys.',
+      },
+      Graphite: {
+        name: 'Graphite',
+        description: 'Essential for battery anodes. China dominates the "spherical" graphite refining stage globally.',
+        use: 'Anodes in virtually all lithium-ion batteries.',
+      },
+      La: {
+        name: 'Lanthanum',
+        description: 'A light rare earth used in catalysts and specialty optical glass.',
+        use: 'Refinery catalysts, camera lenses, NiMH batteries.',
+      },
+      Ce: {
+        name: 'Cerium',
+        description: 'The most abundant rare earth, often co-produced with Lanthanum from monazite ores.',
+        use: 'Glass polishing, auto catalysts, alloys.',
+      },
+      Monazite: {
+        name: 'Monazite',
+        description: 'A rare-earth-bearing mineral sand, also containing thorium. India holds huge reserves in its beach sands.',
+        use: 'Feedstock for mixed rare-earth concentrates.',
+      },
+    },
+    countries: {
+      CN: {
+        name: 'China',
+        status: 'Dominant producer of all 17 REEs and graphite; controls global pricing and refining.',
+        companies: {
+          chinaRareEarthGroup: 'State-owned mega-firm created by merging several smaller companies to control the domestic market.',
+          shengheResources: 'Major global player that also invests in overseas projects (US, Greenland).',
+        },
+      },
+      VN: {
+        name: 'Vietnam',
+        status: "World's second-largest reserves (~22M tonnes); production scaling rapidly with Western backing.",
+        companies: {
+          vtre: 'Working with Australian and Korean firms to restart the Dong Pao mine, one of the largest in the world.',
+          blackstone: 'Actively exploring nickel and associated rare earth projects in the Ta Khoa district.',
+        },
+      },
+      BR: {
+        name: 'Brazil',
+        status: 'Massive deposits in Minas Gerais; recently became a "Tier 1" supplier to the US.',
+        companies: {
+          serraVerde: 'Operates the Pela Ema mine, one of the only sources outside Asia for the four magnet metals (Nd, Pr, Tb, Dy).',
+          appia: 'Actively exploring the high-grade Cachoeira de Paita project.',
+        },
+      },
+      AU: {
+        name: 'Australia',
+        status: 'Primary non-Chinese source of light rare earths.',
+        companies: {
+          lynas: {
+            description: "World's largest rare-earth producer outside China — operates Mount Weld mine and a separation plant in Malaysia.",
+            catalyst: 'Expansion of the Malaysian processing plant; scaling NdPr output to meet long-term allied demand.',
+            contracts: 'Strategic supply contracts with the U.S. Department of Defense and Japanese industrial partners.',
+          },
+          iluka: "Building Australia's first fully integrated rare-earth refinery.",
+        },
+      },
+      US: {
+        name: 'United States',
+        status: 'Scaling domestic magnet production to match its mining output.',
+        companies: {
+          mpMaterials: {
+            description: 'Operates the Mountain Pass mine in California; moving into "mine-to-magnet" production to bypass Chinese factories.',
+            catalyst: 'Ramp-up of the $200M "10X" magnetics facility in Texas — fully vertically integrated production from ore to finished magnets.',
+            contracts: 'Major offtake agreement with General Motors to supply permanent magnets for EV motors.',
+          },
+          usaRareEarth: {
+            description: 'Developing the Round Top project in Texas; in April 2026 acquired the Pela Ema mine (Brazil) for $2.8B — a "Mine-to-Magnet" strategy feeding U.S. processing facilities.',
+            catalyst: 'Integration of the Brazilian Pela Ema acquisition; production expected to hit 6,400 tonnes of rare earth oxides annually by 2027.',
+            contracts: 'Vertically integrated supply: Brazilian ore feeds U.S. processing and magnet-making facilities — bypasses Chinese refining.',
+          },
+        },
+      },
+      IN: {
+        name: 'India',
+        status: 'Massive beach sand deposits (monazite); currently focused on domestic high-tech use.',
+        companies: {},
+      },
+      CA: {
+        name: 'Canada',
+        status: 'Expanding rapidly in the Northwest Territories and Quebec.',
+        companies: {
+          vitalMetals: "Canada's first rare earth producer, focused on the Nechalacho project.",
+          neo: 'Canadian-HQ company operating processing plants globally (including Estonia) to produce high-value powders and magnets.',
+        },
+      },
+      ZA: {
+        name: 'South Africa',
+        status: 'Home to Steenkampskraal — the highest-grade rare earth deposit in the world (~14.5% REO vs. the 1-2% typical elsewhere).',
+        companies: {
+          smm: 'Operator of the Steenkampskraal mine, rolling out a six-phase plan to mine, process and separate the metals domestically.',
+        },
+      },
+      MW: {
+        name: 'Malawi',
+        status: "Fast-rising magnet-metals player; the Songwe Hill project is among the few globally to reach definitive feasibility.",
+        companies: {
+          mkango: {
+            description: 'Building a "mine-to-market" pipeline from Songwe Hill — mining in Malawi, separation in Poland, selling directly to European carmakers.',
+            catalyst: 'Definitive Feasibility Study completed March 2026. Construction slated for 2027, first production in 2029. Financing close is the near-term catalyst.',
+            contracts: 'Vertical integration: Songwe Hill concentrate ships to a dedicated separation plant in Poland for European OEM offtake.',
+          },
+        },
+      },
+      NA: {
+        name: 'Namibia',
+        status: 'Massive reserves and a rare source of the heavy rare earths (Dy, Tb) needed for high-temperature magnets.',
+        companies: {
+          bannerman: 'Primarily a uranium developer (Etango Project), but supports key infrastructure for the broader rare-minerals sector.',
+          ncm: 'Developing the Lofdal project, specifically rich in heavy rare earths for high-temp magnets.',
+        },
+      },
+      BI: {
+        name: 'Burundi',
+        status: 'Home to Gakara — historically the highest-purity rare earth concentrate in the world.',
+        companies: {
+          rainbow: {
+            description: 'Operator of the Gakara project; top-tier asset despite political friction with the government over profit-sharing. Also advancing a low-cost phosphogypsum extraction project in South Africa.',
+            catalyst: 'Successful pilot of waste-pile (phosphogypsum) extraction tech — far lower capex than deep-rock mining.',
+            contracts: '$50M investment secured from the U.S. International Development Finance Corporation (DFC) — strong Western political backing.',
+          },
+        },
+      },
+      CD: {
+        name: 'DR Congo',
+        status: "Produces over 70% of the world's cobalt — the critical stabiliser in lithium-ion battery cathodes.",
+        companies: {
+          glencore: 'Major operator of large-scale copper-cobalt mines in Katanga — one of the largest cobalt producers globally.',
+          cmoc: 'Chinese-backed operator of Tenke Fungurume and Kisanfu — among the largest cobalt mines in the world.',
+        },
+      },
+      ML: {
+        name: 'Mali',
+        status: 'Became a major lithium producer in late 2025 / early 2026 as the Goulamina project reached production.',
+        companies: {
+          ganfeng: 'Operator of the Goulamina lithium project — one of the largest spodumene deposits in Africa.',
+          leoLithium: 'Development partner on Goulamina, a flagship lithium project supplying the EV battery market.',
+        },
+      },
+    },
+  },
+  mineralsCountry: {
+    back: 'Back to minerals',
+    notFound: 'Country not found in the minerals dataset.',
+    mineralsTitle: 'Minerals found here',
+    companiesTitle: 'Companies operating on the ground',
+    companiesEmpty: 'No major public operators tracked yet in this country.',
+    mineralsCount: '{count} minerals | {count} mineral | {count} minerals',
+    companiesCount: '{count} companies | {count} company | {count} companies',
+    financials: {
+      profitability: 'Profitability',
+      dividend: 'Dividend',
+      mineLife: 'Mine life',
+      risk: 'Risk',
+      revenueYoY: 'Revenue YoY',
+      netIncome: 'Net income',
+      primaryCatalyst: 'Primary catalyst',
+      contracts: 'Key contracts',
+      stages: {
+        producer: 'Producer',
+        developer: 'Developer',
+        exploration: 'Exploration',
+      },
+      profits: {
+        profitable: 'Profitable',
+        transitioning: 'Transitioning',
+        notYet: 'Not yet',
+      },
+      dividends: {
+        none: 'None',
+        paying: 'Paying',
+        variable: 'Variable',
+      },
+      risks: {
+        low: 'Low',
+        moderate: 'Moderate',
+        high: 'High',
+      },
     },
   },
   follow: {

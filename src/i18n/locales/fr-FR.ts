@@ -6,6 +6,7 @@ export default {
     dividends: 'Dividendes',
     aiRecommendation: 'Picks',
     followed: 'Suivis',
+    minerals: 'Minéraux',
   },
   dashboard: {
     title: "Vue d'ensemble",
@@ -205,6 +206,245 @@ export default {
       network: 'Erreur réseau — vérifiez votre connexion.',
       tooManyRequests: 'Trop de tentatives. Réessayez dans quelques minutes.',
       generic: "Une erreur s'est produite. Veuillez réessayer.",
+    },
+  },
+  minerals: {
+    title: 'Minéraux Rares',
+    subtitle: "D'où viennent les métaux qui alimentent les VE, les éoliennes et le matériel d'IA",
+    loading: 'Chargement des données minérales...',
+    dataAsOf: 'Données au {date}',
+    warning: {
+      title: "Avertissement clé pour l'investisseur — preneurs de prix",
+      body: "Ces entreprises sont preneuses de prix. Leurs cours bougent fortement avec le prix mondial du NdPr (néodyme-praséodyme). Si la Chine inonde le marché pour faire chuter les prix, les marges s'écrasent instantanément. En 2026, les gouvernements occidentaux accordent subventions et prix planchers pour maintenir viable l'offre hors de Chine.",
+    },
+    mapTitle: 'Réserves et opérations mondiales',
+    mapHint: 'Cliquez sur un marqueur pour voir les minéraux et les entreprises actives dans le pays.',
+    countriesTitle: 'Pays clés',
+    countriesHint: 'Classés par nombre de minéraux critiques produits.',
+    mineralsTitle: 'Minéraux critiques pour 2026',
+    usedFor: 'Utilisé pour',
+    viewCountry: 'Voir les détails du pays',
+    companiesCount: '{count} entreprises | {count} entreprise | {count} entreprises',
+    why: {
+      title: "Pourquoi les minéraux rares comptent pour les investisseurs",
+      body: "La Chine contrôle encore ~60% de la production mondiale de terres rares et une emprise encore plus forte sur les oxydes raffinés et la fabrication d'aimants. Alors que les VE, les éoliennes, la robotique et la défense montent en puissance, les gouvernements occidentaux soutiennent de nouvelles mines et raffineries hors de Chine — créant une rare opportunité d'investissement dans un marché structurellement monopolisé depuis deux décennies.",
+    },
+    category: {
+      all: 'Tous',
+      magnet: "Métaux d'aimant",
+      battery: 'Batterie',
+      other: 'Autres',
+    },
+    entries: {
+      Nd: {
+        name: 'Néodyme',
+        description: 'Partie du "duo de puissance" avec le Praséodyme, il forme la colonne vertébrale des aimants permanents dans les moteurs électriques.',
+        use: 'Aimants permanents pour motorisations VE, éoliennes et électronique grand public.',
+      },
+      Pr: {
+        name: 'Praséodyme',
+        description: 'Associé au Néodyme dans les alliages NdPr — ensemble ils dominent le marché des aimants haute performance.',
+        use: 'Aimants permanents haute résistance, alliages aérospatiaux.',
+      },
+      Dy: {
+        name: 'Dysprosium',
+        description: 'Terre rare "lourde" ajoutée aux aimants pour qu\'ils conservent leur force à haute température.',
+        use: 'Aimants haute température pour VE et systèmes de défense.',
+      },
+      Tb: {
+        name: 'Terbium',
+        description: "Autre terre rare lourde qui améliore la coercivité de l'aimant — critique pour les moteurs haute performance.",
+        use: "Aimants résistants à la chaleur, phosphores dans les écrans.",
+      },
+      Li: {
+        name: 'Lithium',
+        description: "Le métal le plus léger et la pierre angulaire de la chimie moderne des batteries — pas techniquement une terre rare mais regroupé comme \"minéral rare\".",
+        use: "Batteries lithium-ion pour VE et stockage réseau.",
+      },
+      Co: {
+        name: 'Cobalt',
+        description: 'Stabilise les cathodes des batteries lithium-ion, prolongeant la durée de vie et la sécurité.',
+        use: 'Cathodes de batterie (chimies NMC / NCA), superalliages.',
+      },
+      Graphite: {
+        name: 'Graphite',
+        description: 'Essentiel pour les anodes de batteries. La Chine domine mondialement l\'étape de raffinage du graphite "sphérique".',
+        use: 'Anodes dans pratiquement toutes les batteries lithium-ion.',
+      },
+      La: {
+        name: 'Lanthane',
+        description: 'Terre rare légère utilisée dans les catalyseurs et les verres optiques spéciaux.',
+        use: "Catalyseurs de raffinerie, objectifs d'appareil photo, batteries NiMH.",
+      },
+      Ce: {
+        name: 'Cérium',
+        description: 'La terre rare la plus abondante, souvent co-produite avec le Lanthane à partir de minerais de monazite.',
+        use: 'Polissage du verre, catalyseurs automobiles, alliages.',
+      },
+      Monazite: {
+        name: 'Monazite',
+        description: "Sable minéral contenant des terres rares, également du thorium. L'Inde détient d'énormes réserves dans ses sables de plage.",
+        use: 'Matière première pour concentrés mixtes de terres rares.',
+      },
+    },
+    countries: {
+      CN: {
+        name: 'Chine',
+        status: 'Producteur dominant des 17 éléments de terres rares et du graphite; contrôle les prix et le raffinage mondial.',
+        companies: {
+          chinaRareEarthGroup: "Méga-entreprise d'État créée en fusionnant plusieurs petites entreprises pour contrôler le marché intérieur.",
+          shengheResources: "Acteur mondial majeur qui investit aussi dans des projets à l'étranger (USA, Groenland).",
+        },
+      },
+      VN: {
+        name: 'Vietnam',
+        status: "Deuxièmes plus grandes réserves mondiales (~22Mt); production en forte croissance avec le soutien occidental.",
+        companies: {
+          vtre: "Travaille avec des entreprises australiennes et coréennes pour redémarrer la mine Dong Pao, l'une des plus grandes au monde.",
+          blackstone: 'Exploration active de projets de nickel et de terres rares associées dans le district de Ta Khoa.',
+        },
+      },
+      BR: {
+        name: 'Brésil',
+        status: 'Dépôts massifs à Minas Gerais; récemment devenu fournisseur "Tier 1" des États-Unis.',
+        companies: {
+          serraVerde: "Exploite la mine Pela Ema, l'une des seules sources hors d'Asie pour les quatre métaux d'aimant (Nd, Pr, Tb, Dy).",
+          appia: 'Exploration active du projet de haute teneur Cachoeira de Paita.',
+        },
+      },
+      AU: {
+        name: 'Australie',
+        status: 'Principale source non chinoise de terres rares légères.',
+        companies: {
+          lynas: {
+            description: 'Plus grand producteur de terres rares hors Chine — exploite la mine Mount Weld et une usine de séparation en Malaisie.',
+            catalyst: "Extension de l'usine de traitement en Malaisie; montée en puissance du NdPr pour répondre à la demande alliée de long terme.",
+            contracts: "Contrats d'approvisionnement stratégiques avec le Département de la Défense américain et des partenaires industriels japonais.",
+          },
+          iluka: "Construit la première raffinerie de terres rares entièrement intégrée d'Australie.",
+        },
+      },
+      US: {
+        name: 'États-Unis',
+        status: "Accélère la production nationale d'aimants pour rattraper son extraction.",
+        companies: {
+          mpMaterials: {
+            description: 'Exploite la mine Mountain Pass en Californie; passe à la production "mine-à-aimant" pour contourner les usines chinoises.',
+            catalyst: "Montée en puissance de l'usine d'aimants « 10X » au Texas (200 M$) — production entièrement intégrée, du minerai à l'aimant.",
+            contracts: "Accord d'offtake majeur avec General Motors pour fournir des aimants permanents aux moteurs de VE.",
+          },
+          usaRareEarth: {
+            description: "Développe le projet Round Top au Texas; a acquis en avril 2026 la mine Pela Ema (Brésil) pour 2,8 Md$ — stratégie « mine-à-aimant » alimentant des installations aux États-Unis.",
+            catalyst: "Intégration de l'acquisition brésilienne (Pela Ema); production prévue de 6 400 tonnes d'oxydes de terres rares par an d'ici 2027.",
+            contracts: "Chaîne intégrée verticalement : le minerai brésilien alimente le traitement et la fabrication d'aimants aux États-Unis — contourne le raffinage chinois.",
+          },
+        },
+      },
+      IN: {
+        name: 'Inde',
+        status: 'Dépôts massifs de sables de plage (monazite); actuellement axé sur un usage domestique de haute technologie.',
+        companies: {},
+      },
+      CA: {
+        name: 'Canada',
+        status: 'Expansion rapide dans les Territoires du Nord-Ouest et au Québec.',
+        companies: {
+          vitalMetals: 'Premier producteur canadien de terres rares, focalisé sur le projet Nechalacho.',
+          neo: "Entreprise basée au Canada opérant des usines de traitement à l'international (y compris en Estonie) pour produire des poudres et aimants à forte valeur.",
+        },
+      },
+      ZA: {
+        name: 'Afrique du Sud',
+        status: "Abrite Steenkampskraal — le gisement de terres rares à la plus haute teneur au monde (~14,5% d'oxydes contre 1-2% ailleurs).",
+        companies: {
+          smm: "Exploitant de la mine Steenkampskraal, déployant un plan en six phases pour extraire, traiter et séparer les métaux sur place.",
+        },
+      },
+      MW: {
+        name: 'Malawi',
+        status: 'Acteur en pleine ascension dans les métaux pour aimants; le projet Songwe Hill est parmi les rares au monde à avoir atteint la faisabilité définitive.',
+        companies: {
+          mkango: {
+            description: "Construit un pipeline « mine-au-marché » à partir de Songwe Hill — extraction au Malawi, séparation en Pologne, vente directe aux constructeurs européens.",
+            catalyst: "Étude de Faisabilité Définitive finalisée en mars 2026. Construction prévue pour 2027, première production en 2029. Le bouclage du financement est le catalyseur à court terme.",
+            contracts: "Intégration verticale : le concentré de Songwe Hill part vers une usine de séparation dédiée en Pologne pour offtake par les OEM européens.",
+          },
+        },
+      },
+      NA: {
+        name: 'Namibie',
+        status: 'Réserves massives et une source rare des terres rares lourdes (Dy, Tb) nécessaires pour les aimants haute température.',
+        companies: {
+          bannerman: "Principalement développeur d'uranium (Projet Etango), mais soutient les infrastructures clés du secteur des minéraux rares.",
+          ncm: 'Développe le projet Lofdal, spécifiquement riche en terres rares lourdes pour aimants haute température.',
+        },
+      },
+      BI: {
+        name: 'Burundi',
+        status: 'Abrite Gakara — historiquement le concentré de terres rares de plus haute pureté au monde.',
+        companies: {
+          rainbow: {
+            description: "Exploitant du projet Gakara; actif de premier ordre malgré des frictions politiques avec le gouvernement sur le partage des bénéfices. Développe aussi un projet à faible coût d'extraction à partir de phosphogypse en Afrique du Sud.",
+            catalyst: "Pilote réussi d'extraction à partir de résidus (phosphogypse) — CAPEX bien plus faible que l'exploitation minière profonde classique.",
+            contracts: "50 M$ sécurisés auprès de la U.S. International Development Finance Corporation (DFC) — fort soutien politique occidental.",
+          },
+        },
+      },
+      CD: {
+        name: 'RD Congo',
+        status: "Produit plus de 70% du cobalt mondial — le stabilisateur critique des cathodes de batteries lithium-ion.",
+        companies: {
+          glencore: 'Grand opérateur de mines de cuivre-cobalt au Katanga — parmi les plus gros producteurs mondiaux de cobalt.',
+          cmoc: 'Opérateur soutenu par la Chine de Tenke Fungurume et Kisanfu — parmi les plus grandes mines de cobalt au monde.',
+        },
+      },
+      ML: {
+        name: 'Mali',
+        status: 'Est devenu un producteur majeur de lithium fin 2025 / début 2026 avec la mise en production du projet Goulamina.',
+        companies: {
+          ganfeng: "Exploitant du projet lithium Goulamina — l'un des plus grands gisements de spodumène d'Afrique.",
+          leoLithium: "Partenaire de développement sur Goulamina, un projet lithium phare approvisionnant le marché des batteries VE.",
+        },
+      },
+    },
+  },
+  mineralsCountry: {
+    back: 'Retour aux minéraux',
+    notFound: 'Pays introuvable dans le jeu de données.',
+    mineralsTitle: 'Minéraux présents ici',
+    companiesTitle: 'Entreprises actives sur le terrain',
+    companiesEmpty: "Aucun opérateur public majeur suivi dans ce pays pour l'instant.",
+    mineralsCount: '{count} minéraux | {count} minéral | {count} minéraux',
+    companiesCount: '{count} entreprises | {count} entreprise | {count} entreprises',
+    financials: {
+      profitability: 'Rentabilité',
+      dividend: 'Dividende',
+      mineLife: 'Durée de vie',
+      risk: 'Risque',
+      revenueYoY: 'CA YoY',
+      netIncome: 'Résultat net',
+      primaryCatalyst: 'Catalyseur principal',
+      contracts: 'Contrats clés',
+      stages: {
+        producer: 'Producteur',
+        developer: 'En développement',
+        exploration: 'Exploration',
+      },
+      profits: {
+        profitable: 'Rentable',
+        transitioning: 'En transition',
+        notYet: 'Pas encore',
+      },
+      dividends: {
+        none: 'Aucun',
+        paying: 'Paye',
+        variable: 'Variable',
+      },
+      risks: {
+        low: 'Faible',
+        moderate: 'Modéré',
+        high: 'Élevé',
+      },
     },
   },
   follow: {

@@ -6,6 +6,7 @@ export default {
     dividends: 'Dividendos',
     aiRecommendation: 'Picks',
     followed: 'Seguindo',
+    minerals: 'Minerais',
   },
   dashboard: {
     title: 'Visão Geral',
@@ -205,6 +206,245 @@ export default {
       network: 'Erro de rede — verifique sua conexão.',
       tooManyRequests: 'Muitas tentativas. Tente novamente em alguns minutos.',
       generic: 'Algo deu errado. Tente de novo.',
+    },
+  },
+  minerals: {
+    title: 'Minerais Raros',
+    subtitle: 'Onde o mundo extrai os metais que alimentam veículos elétricos, turbinas eólicas e hardware de IA',
+    loading: 'Carregando dados de minerais...',
+    dataAsOf: 'Dados de {date}',
+    warning: {
+      title: 'Aviso-chave ao investidor — tomadores de preço',
+      body: 'Estas empresas são tomadoras de preço. As ações oscilam fortemente com o preço global do NdPr (neodímio-praseodímio). Se a China inundar o mercado para derrubar preços, as margens encolhem imediatamente. Em 2026, governos ocidentais fornecem subsídios e preços-piso para manter viável a oferta fora da China.',
+    },
+    mapTitle: 'Reservas e operações globais',
+    mapHint: 'Clique em um marcador para ver os minerais e empresas ativas no país.',
+    countriesTitle: 'Países-chave',
+    countriesHint: 'Ordenados pelo número de minerais críticos produzidos.',
+    mineralsTitle: 'Minerais críticos para 2026',
+    usedFor: 'Usado para',
+    viewCountry: 'Ver detalhes do país',
+    companiesCount: '{count} empresas | {count} empresa | {count} empresas',
+    why: {
+      title: 'Por que minerais raros importam para investidores',
+      body: 'A China ainda controla ~60% da produção global de terras raras e um domínio ainda maior sobre óxidos refinados e fabricação de ímãs. À medida que veículos elétricos, turbinas eólicas, robótica e defesa crescem, governos ocidentais estão financiando novas minas e refinarias fora da China — criando uma rara oportunidade de investimento em um mercado estruturalmente monopolizado por duas décadas.',
+    },
+    category: {
+      all: 'Todos',
+      magnet: 'Metais de ímã',
+      battery: 'Bateria',
+      other: 'Outros',
+    },
+    entries: {
+      Nd: {
+        name: 'Neodímio',
+        description: 'Parte do "par de potência" com o Praseodímio, forma a espinha dorsal dos ímãs permanentes em motores elétricos.',
+        use: 'Ímãs permanentes para motores de VE, turbinas eólicas e eletrônicos de consumo.',
+      },
+      Pr: {
+        name: 'Praseodímio',
+        description: 'Combinado com Neodímio em ligas NdPr — juntos dominam o mercado de ímãs de alta performance.',
+        use: 'Ímãs permanentes de alta resistência, ligas aeroespaciais.',
+      },
+      Dy: {
+        name: 'Disprósio',
+        description: 'Terra rara "pesada" adicionada aos ímãs para que mantenham força em altas temperaturas.',
+        use: 'Ímãs de alta temperatura para VEs e sistemas de defesa.',
+      },
+      Tb: {
+        name: 'Térbio',
+        description: 'Outra terra rara pesada que melhora a coercividade do ímã — crítica para motores de alta performance.',
+        use: 'Ímãs resistentes ao calor, fósforos em displays.',
+      },
+      Li: {
+        name: 'Lítio',
+        description: 'O metal mais leve e a base da química moderna de baterias — não é tecnicamente uma terra rara, mas agrupado como "mineral raro".',
+        use: 'Baterias de íons de lítio para VEs e armazenamento em rede.',
+      },
+      Co: {
+        name: 'Cobalto',
+        description: 'Estabiliza cátodos em baterias de íons de lítio, prolongando vida útil e segurança.',
+        use: 'Cátodos de bateria (químicas NMC / NCA), superligas.',
+      },
+      Graphite: {
+        name: 'Grafite',
+        description: 'Essencial para ânodos de bateria. A China domina globalmente a etapa de refino do grafite "esférico".',
+        use: 'Ânodos em praticamente todas as baterias de íons de lítio.',
+      },
+      La: {
+        name: 'Lantânio',
+        description: 'Terra rara leve usada em catalisadores e vidros ópticos especiais.',
+        use: 'Catalisadores de refinaria, lentes de câmera, baterias NiMH.',
+      },
+      Ce: {
+        name: 'Cério',
+        description: 'A terra rara mais abundante, frequentemente co-produzida com Lantânio a partir de minérios de monazita.',
+        use: 'Polimento de vidro, catalisadores automotivos, ligas metálicas.',
+      },
+      Monazite: {
+        name: 'Monazita',
+        description: 'Areia mineral contendo terras raras, também com tório. A Índia tem enormes reservas em suas areias de praia.',
+        use: 'Matéria-prima para concentrados mistos de terras raras.',
+      },
+    },
+    countries: {
+      CN: {
+        name: 'China',
+        status: 'Produtor dominante dos 17 elementos de terras raras e grafite; controla preços e refino global.',
+        companies: {
+          chinaRareEarthGroup: 'Mega-empresa estatal criada pela fusão de várias empresas menores para controlar o mercado doméstico.',
+          shengheResources: 'Grande player global que também investe em projetos no exterior (EUA, Groenlândia).',
+        },
+      },
+      VN: {
+        name: 'Vietnã',
+        status: 'Segundas maiores reservas do mundo (~22Mt); produção crescendo rapidamente com apoio ocidental.',
+        companies: {
+          vtre: 'Trabalhando com empresas australianas e coreanas para reativar a mina Dong Pao, uma das maiores do mundo.',
+          blackstone: 'Explorando ativamente projetos de níquel e terras raras associadas no distrito de Ta Khoa.',
+        },
+      },
+      BR: {
+        name: 'Brasil',
+        status: 'Depósitos massivos em Minas Gerais; recentemente se tornou fornecedor "Tier 1" para os EUA.',
+        companies: {
+          serraVerde: 'Opera a mina Pela Ema, uma das únicas fontes fora da Ásia para os quatro metais de ímã (Nd, Pr, Tb, Dy).',
+          appia: 'Explorando ativamente o projeto de alta qualidade Cachoeira de Paita.',
+        },
+      },
+      AU: {
+        name: 'Austrália',
+        status: 'Principal fonte não-chinesa de terras raras leves.',
+        companies: {
+          lynas: {
+            description: 'Maior produtor de terras raras fora da China — opera a mina Mount Weld e uma planta de separação na Malásia.',
+            catalyst: 'Expansão da planta de processamento na Malásia; escalando produção de NdPr para atender demanda aliada de longo prazo.',
+            contracts: 'Contratos estratégicos de fornecimento com o Departamento de Defesa dos EUA e parceiros industriais japoneses.',
+          },
+          iluka: 'Construindo a primeira refinaria totalmente integrada de terras raras da Austrália.',
+        },
+      },
+      US: {
+        name: 'Estados Unidos',
+        status: 'Escalando produção doméstica de ímãs para acompanhar sua extração.',
+        companies: {
+          mpMaterials: {
+            description: 'Opera a mina Mountain Pass na Califórnia; avançando para produção "mina-a-ímã" para contornar fábricas chinesas.',
+            catalyst: 'Ramp-up da planta de ímãs "10X" no Texas (US$ 200M) — produção totalmente integrada do minério ao ímã.',
+            contracts: 'Acordo de offtake relevante com a General Motors para fornecer ímãs permanentes para motores de VE.',
+          },
+          usaRareEarth: {
+            description: 'Desenvolvendo o projeto Round Top no Texas; em abril de 2026 adquiriu a mina Pela Ema (Brasil) por US$ 2,8 bi — estratégia "mina-a-ímã" alimentando instalações nos EUA.',
+            catalyst: 'Integração da aquisição brasileira (Pela Ema); produção prevista de 6.400 toneladas de óxidos de terras raras por ano até 2027.',
+            contracts: 'Cadeia verticalizada: minério brasileiro abastece processamento e fabricação de ímãs nos EUA — contornando a refinação chinesa.',
+          },
+        },
+      },
+      IN: {
+        name: 'Índia',
+        status: 'Depósitos massivos de areias de praia (monazita); atualmente focado em uso doméstico de alta tecnologia.',
+        companies: {},
+      },
+      CA: {
+        name: 'Canadá',
+        status: 'Expansão rápida nos Territórios do Noroeste e Quebec.',
+        companies: {
+          vitalMetals: 'Primeiro produtor de terras raras do Canadá, focado no projeto Nechalacho.',
+          neo: 'Empresa com sede no Canadá operando plantas de processamento globalmente (incluindo Estônia) para produzir pós e ímãs de alto valor.',
+        },
+      },
+      ZA: {
+        name: 'África do Sul',
+        status: 'Lar de Steenkampskraal — o depósito de terras raras de maior grau do mundo (~14,5% de óxidos vs. 1-2% típico em outros lugares).',
+        companies: {
+          smm: 'Operadora da mina Steenkampskraal, executando um plano de seis fases para minerar, processar e separar os metais domesticamente.',
+        },
+      },
+      MW: {
+        name: 'Malauí',
+        status: 'Player em rápida ascensão em metais para ímãs; o projeto Songwe Hill está entre os poucos no mundo a atingir viabilidade definitiva.',
+        companies: {
+          mkango: {
+            description: 'Construindo um pipeline "mina-ao-mercado" a partir de Songwe Hill — mineração no Malauí, separação na Polônia, venda direta a montadoras europeias.',
+            catalyst: 'Estudo de Viabilidade Definitiva concluído em março/2026. Construção prevista para 2027; primeira produção em 2029. Fechamento do financiamento é o catalisador de curto prazo.',
+            contracts: 'Integração vertical: concentrado de Songwe Hill segue para planta de separação dedicada na Polônia para offtake de OEMs europeias.',
+          },
+        },
+      },
+      NA: {
+        name: 'Namíbia',
+        status: 'Reservas massivas e uma rara fonte de terras raras pesadas (Dy, Tb) necessárias para ímãs de alta temperatura.',
+        companies: {
+          bannerman: 'Principalmente desenvolvedora de urânio (Projeto Etango), mas apoia infraestrutura-chave para o setor de minerais raros.',
+          ncm: 'Desenvolvendo o projeto Lofdal, especificamente rico em terras raras pesadas para ímãs de alta temperatura.',
+        },
+      },
+      BI: {
+        name: 'Burundi',
+        status: 'Lar de Gakara — historicamente o concentrado de terras raras de maior pureza do mundo.',
+        companies: {
+          rainbow: {
+            description: 'Operadora do projeto Gakara; ativo de alto nível apesar de atritos políticos com o governo sobre divisão de lucros. Também desenvolve projeto de baixo custo de extração de fosfogesso na África do Sul.',
+            catalyst: 'Piloto bem-sucedido de extração a partir de pilhas de rejeito (fosfogesso) — CAPEX muito menor do que mineração profunda convencional.',
+            contracts: 'US$ 50M garantidos junto à U.S. International Development Finance Corporation (DFC) — forte apoio político ocidental.',
+          },
+        },
+      },
+      CD: {
+        name: 'RD Congo',
+        status: 'Produz mais de 70% do cobalto mundial — o estabilizador crítico em cátodos de baterias de íons de lítio.',
+        companies: {
+          glencore: 'Grande operadora de minas de cobre-cobalto em Katanga — uma das maiores produtoras de cobalto do mundo.',
+          cmoc: 'Operadora apoiada pela China de Tenke Fungurume e Kisanfu — entre as maiores minas de cobalto do mundo.',
+        },
+      },
+      ML: {
+        name: 'Mali',
+        status: 'Tornou-se grande produtor de lítio no final de 2025 / início de 2026 quando o projeto Goulamina entrou em produção.',
+        companies: {
+          ganfeng: 'Operadora do projeto de lítio Goulamina — um dos maiores depósitos de espodumênio da África.',
+          leoLithium: 'Parceira de desenvolvimento em Goulamina, um projeto de lítio-chave fornecendo ao mercado de baterias de VE.',
+        },
+      },
+    },
+  },
+  mineralsCountry: {
+    back: 'Voltar para minerais',
+    notFound: 'País não encontrado no conjunto de dados.',
+    mineralsTitle: 'Minerais encontrados aqui',
+    companiesTitle: 'Empresas operando no local',
+    companiesEmpty: 'Nenhum operador público relevante rastreado neste país ainda.',
+    mineralsCount: '{count} minerais | {count} mineral | {count} minerais',
+    companiesCount: '{count} empresas | {count} empresa | {count} empresas',
+    financials: {
+      profitability: 'Lucratividade',
+      dividend: 'Dividendo',
+      mineLife: 'Vida útil',
+      risk: 'Risco',
+      revenueYoY: 'Receita YoY',
+      netIncome: 'Lucro líquido',
+      primaryCatalyst: 'Catalisador principal',
+      contracts: 'Contratos-chave',
+      stages: {
+        producer: 'Produtora',
+        developer: 'Em desenvolvimento',
+        exploration: 'Exploração',
+      },
+      profits: {
+        profitable: 'Lucrativa',
+        transitioning: 'Em transição',
+        notYet: 'Ainda não',
+      },
+      dividends: {
+        none: 'Nenhum',
+        paying: 'Paga',
+        variable: 'Variável',
+      },
+      risks: {
+        low: 'Baixo',
+        moderate: 'Moderado',
+        high: 'Alto',
+      },
     },
   },
   follow: {
