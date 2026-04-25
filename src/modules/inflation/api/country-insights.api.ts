@@ -30,9 +30,6 @@ export async function fetchCountryDebt(isoCode: string): Promise<CountryDebt | n
 const LOCALE_TO_LANGUAGE: Record<string, string> = {
   'en-US': 'English',
   'pt-BR': 'Brazilian Portuguese',
-  'fr-FR': 'French',
-  'it-IT': 'Italian',
-  'es-ES': 'Spanish',
 }
 
 export async function fetchCountryEconomicAnalysis(

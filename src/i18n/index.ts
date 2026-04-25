@@ -1,11 +1,8 @@
 import { createI18n } from 'vue-i18n'
 import enUS from './locales/en-US'
 import ptBR from './locales/pt-BR'
-import frFR from './locales/fr-FR'
-import itIT from './locales/it-IT'
-import esES from './locales/es-ES'
 
-const SUPPORTED_LOCALES = ['en-US', 'pt-BR', 'fr-FR', 'it-IT', 'es-ES'] as const
+const SUPPORTED_LOCALES = ['en-US', 'pt-BR'] as const
 
 export type SupportedLocale = (typeof SUPPORTED_LOCALES)[number]
 
@@ -17,7 +14,7 @@ function detectLocale(): SupportedLocale {
     const exact = SUPPORTED_LOCALES.find((l) => l === browserLocale)
     if (exact) return exact
 
-    // language-only match (e.g. "fr" or "fr-CA" → "fr-FR")
+    // language-only match (e.g. "pt" or "pt-PT" → "pt-BR")
     const lang = browserLocale.split('-')[0]
     const partial = SUPPORTED_LOCALES.find((l) => l.startsWith(lang + '-'))
     if (partial) return partial
@@ -33,8 +30,5 @@ export const i18n = createI18n({
   messages: {
     'en-US': enUS,
     'pt-BR': ptBR,
-    'fr-FR': frFR,
-    'it-IT': itIT,
-    'es-ES': esES,
   },
 })

@@ -97,17 +97,11 @@ Return ONLY a raw JSON object — no markdown, no explanation:
       "status": "<bullish|neutral|bearish>",
       "pro": {
         "en-US": "<one concise sentence in English — main investment strength>",
-        "pt-BR": "<same sentence in Brazilian Portuguese>",
-        "fr-FR": "<same sentence in French>",
-        "it-IT": "<same sentence in Italian>",
-        "es-ES": "<same sentence in Spanish>"
+        "pt-BR": "<same sentence in Brazilian Portuguese>"
       },
       "con": {
         "en-US": "<one concise sentence in English — main investment risk>",
-        "pt-BR": "<same sentence in Brazilian Portuguese>",
-        "fr-FR": "<same sentence in French>",
-        "it-IT": "<same sentence in Italian>",
-        "es-ES": "<same sentence in Spanish>"
+        "pt-BR": "<same sentence in Brazilian Portuguese>"
       }
     }
   ]
