@@ -21,12 +21,15 @@
 
 ```
 src/
-├── modules/            # Feature modules (DDD)
+├── modules/            # Feature modules (DDD) — see Features section below
 │   ├── dashboard/
 │   ├── interest-rate/
 │   ├── inflation/
 │   ├── dividends/
 │   ├── ai-recommendation/
+│   ├── minerals/
+│   ├── auth/
+│   ├── follow/
 │   └── theme/
 │       Each module contains:
 │       ├── api/        # HTTP requests
@@ -53,11 +56,35 @@ src/
 └── main.ts             # App bootstrap — registers Pinia, Router, i18n, FA
 
 scripts/
-└── generate-recommendations.mjs   # Daily Gemini → Firestore job
+├── generate-recommendations.mjs   # Daily Gemini → Firestore job (cron)
+├── fetch-company-logos.mjs        # One-shot logo backfill for all current picks
+└── update-logo.mjs                # One-off logo replacement for a single ticker
 
 .github/workflows/
-└── ai-daily-recommendations.yml   # Cron: 08:00 UTC daily
+└── ai-daily-recommendations.yml   # Cron: 02:00 UTC daily
 ```
+
+### Maintenance scripts
+
+All under `scripts/`. Each requires `FIREBASE_SERVICE_ACCOUNT` (and `GEMINI_API_KEY` where the script calls Gemini) as env vars.
+
+- `update-logo.mjs <TICKER> <URL>` — replace one ticker's logo. Uploads to Storage, updates `logos/<TICKER>` and patches `ai-recommendations/latest` so the new logo appears immediately.
+- `fetch-company-logos.mjs` — re-resolves logos for every company currently in `ai-recommendations/latest` via Gemini + fallback chain.
+- `generate-recommendations.mjs` — full daily pipeline (Gemini → Firestore). Same script the GitHub Action runs.
+
+## Features
+
+| Module | Routes | Purpose |
+|--------|--------|---------|
+| `dashboard` | `/` | Landing page with overview cards linking to every feature |
+| `interest-rate` | `/interest-rate` | ECB key interest-rate history chart |
+| `inflation` | `/inflation`, `/inflation/:countryCode` | HICP inflation across EU countries with per-country drill-down |
+| `dividends` | `/dividends`, `/dividends/:ticker` | Dividend-paying stock list with per-company history and Gemini-generated company brief |
+| `ai-recommendation` | `/ai-recommendation`, `/ai-recommendation/:ticker` | Daily Gemini-curated dividend picks read from Firestore cache |
+| `minerals` | `/minerals`, `/minerals/:countryCode` | Critical-mineral reserves and production by EU country |
+| `auth` | `/login`, `/register` | Firebase Auth email/password sign-in (`guestOnly` route guard) |
+| `follow` | `/followed` | Authenticated user's followed tickers/countries (`requiresAuth` route guard) |
+| `theme` | — | Dark/light theme store; no routes |
 
 ## Languages
 

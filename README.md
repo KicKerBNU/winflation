@@ -184,10 +184,12 @@ src/
 └── assets/styles/      # Tailwind entry point
 
 scripts/
-└── generate-recommendations.mjs   # Daily Gemini → Firestore job
+├── generate-recommendations.mjs   # Daily Gemini → Firestore job (cron)
+├── fetch-company-logos.mjs        # One-shot logo backfill for all current picks
+└── update-logo.mjs                # One-off logo replacement for a single ticker
 
 .github/workflows/
-└── ai-daily-recommendations.yml   # Cron: 08:00 UTC daily
+└── ai-daily-recommendations.yml   # Cron: 02:00 UTC daily
 ```
 
 ---
@@ -223,6 +225,28 @@ VITE_FIREBASE_MEASUREMENT_ID=
 GEMINI_API_KEY=<key> FIREBASE_SERVICE_ACCOUNT=<json> node scripts/generate-recommendations.mjs
 ```
 
+### Replace a single company logo
+
+When the AI-resolved logo for a ticker is wrong or low quality, push a better source URL into the database with a one-shot script. Run from the project root so it picks up `.env.local`:
+
+```bash
+node --env-file=.env.local scripts/update-logo.mjs ISP.MI \
+  'https://companieslogo.com/img/orig/ISP.MI-e8dc3cc4.png?t=1746543241'
+```
+
+What it does:
+
+1. Downloads the image, validates content-type and size (≤ 2 MB)
+2. Uploads it to Firebase Storage at `logos/<TICKER>.<ext>`
+3. Updates the Firestore `logos/<TICKER>` document
+4. Patches `ai-recommendations/latest` so the new logo appears on the live page immediately (otherwise it would only refresh on the next 02:00 UTC run)
+
+### Refresh all logos for the current picks
+
+```bash
+GEMINI_API_KEY=<key> FIREBASE_SERVICE_ACCOUNT=<json> node scripts/fetch-company-logos.mjs
+```
+
 ---
 
 ## Firestore Security Rules
@@ -235,3 +259,79 @@ match /ai-recommendations/{doc} {
   allow write: if false;
 }
 ```
+
+---
+
+## AI Recommendations — Roadmap / TODO
+
+Findings from a critical review of the AI Dividend Picks feature, ordered by severity. Tackle top to bottom.
+
+### P0 — Regulatory & legal exposure (do first)
+
+The site publishes content shaped like an investment recommendation (per-stock `bullish/neutral/bearish` labels, daily "Pick of the week", ranked yields). Under EU rules (MAR, ESMA Reg 2016/958) this triggers disclosure obligations even for non-licensed publishers.
+
+- [ ] Add a visible compliance band on `/ai-recommendation` and `/ai-recommendation/:ticker` ("informational only · not financial advice · AI-generated · verify before acting")
+- [ ] Add a global footer disclaimer covering the whole site (inflation/dividends pages also touch financial topics)
+- [ ] Add an "About these picks" section on the AI pages: methodology summary, AI-hallucination warning, data-freshness statement, DYOR call-out
+- [ ] Add a positions / conflicts-of-interest disclosure (state whether the publisher holds any of the listed securities)
+- [ ] Remove the unsupported claim in `aiRecommendation.editorialSubtitle` ("our model thinks beat inflation after tax") — neither inflation nor tax adjustment is computed in the pipeline
+- [ ] Translate all new disclosure copy to pt-BR
+
+### P1 — Data integrity (fabricated numbers)
+
+The pipeline asks Gemini to produce `currentPrice`, `dividendYield`, `annualDividend`, `marketCap`, `priceChangePercent`, plus 5-year `historicYields` and `dividendsPerYear`. These are deterministic public numbers an LLM should not be inventing. Knowledge cutoff + "as of today" prompts produce confident fabrications.
+
+- [ ] Refactor `scripts/generate-recommendations.mjs` to fetch all numeric fields from Financial Modeling Prep (the FMP key is already configured for the dividends module)
+- [ ] Use Gemini only for narrative output (`pro`, `con`, thesis paragraph)
+- [ ] Validate ticker existence and exchange/suffix consistency before saving (e.g. `*.MI` → Borsa Italiana)
+- [ ] Persist daily snapshots instead of overwriting `ai-recommendations/latest` — enables backtest, audit trail, and tracking actual past calls
+
+### P2 — Selection methodology (yield-trap risk)
+
+The current screen is `dividendYield > 2× ECB`. High yield + large cap is one of the most reliable markers of an upcoming dividend cut (Vodafone, Orsted, Société Générale historical episodes). A real dividend screen prioritizes sustainability, not yield.
+
+- [ ] Add payout-ratio screen (dividend ÷ EPS, target < ~70%)
+- [ ] Add free-cash-flow coverage check (dividend ÷ FCF)
+- [ ] Add debt/EBITDA and interest-coverage filter
+- [ ] Add dividend-growth-streak filter (years of consecutive non-cuts/increases)
+- [ ] Add 90-day earnings-revision direction
+- [ ] Add forward P/E vs sector median
+- [ ] Enforce diversification caps (e.g. max 3 per sector, max 2 per country)
+
+### P2 — Brand promise: inflation comparison
+
+`winflation.eu` exists to compare yield against inflation. The AI picks page never shows it.
+
+- [ ] Display the country's HICP inflation rate next to each pick
+- [ ] Compute and surface real yield (nominal yield − inflation) — make this the headline number
+- [ ] Reuse the inflation data already loaded by the inflation module (no new API call needed)
+
+### P3 — Methodology gaps a real advisor would catch
+
+- [ ] Surface withholding-tax impact (varies 0% UK → 35% CH pre-treaty); show net yield after WHT
+- [ ] Flag FX risk for non-EUR currencies (NOK, SEK, DKK, GBP, CHF) — relevant for pt-BR users with EUR exposure too
+- [ ] Define a clear time window for `priceChangePercent` (currently ambiguous — vs. yesterday? YTD? 1y?)
+- [ ] Add total-return view (yield + price action), not yield-only ranking
+- [ ] Add ex-dividend date and next-payment date
+- [ ] Define an explicit rubric for `status` (bullish/neutral/bearish) instead of letting the model decide ad-hoc
+- [ ] Replace single-sentence `pro`/`con` with a structured thesis paragraph
+
+### P3 — Pipeline & operational
+
+- [ ] Stamp every numeric field with the timestamp it's valid as of, render in the UI
+- [ ] Add a correctness gate before Firestore write (schema, ticker exists, country/exchange consistent)
+- [ ] Restrict Gemini-suggested logo URLs to a host whitelist (Wikimedia, well-known CDNs) — currently fetches arbitrary URLs the LLM returns
+- [ ] Fix i18n drift: `aiRecommendation.refreshesDaily` still reads "8:00 UTC" but cron is now `02:00 UTC`
+- [ ] Update README cron reference (this file says 08:00 UTC; workflow now runs at 02:00 UTC)
+
+### P4 — Find a free tier for Storage logos
+
+The logo backfill script fetches logos from arbitrary URLs the Gemini API returns. This is a privacy/security risk and also a bandwidth hog.
+
+- [ ] Find a free tier for Firebase Storage that supports public objects (e.g. 1 GB free, 10 GB max)
+- [ ] Limit logo URLs to a whitelist of well-known CDNs (Wikimedia, Cloudflare, Cloudfront, etc.)
+- [ ] Add a rate limit to the logo backfill script (e.g. 10 requests per minute)
+- [ ] Add a cache busting query parameter to the logo URL (e.g. `?v=1`)
+- [ ] Add a logging statement to the logo backfill script when a logo is fetched from an arbitrary URL
+- [ ] Add a logging statement to the logo backfill script when a logo is fetched from a whitelist URL
+- [ ] Add a logging statement to the logo backfill script when a logo is fetched from a whitelist URL

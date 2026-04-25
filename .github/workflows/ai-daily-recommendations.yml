@@ -1,4 +1,4 @@
-# Runs every day at 08:00 UTC and stores AI-generated dividend picks in Firestore.
+# Runs every day at 02:00 UTC and stores AI-generated dividend picks in Firestore.
 # Users visiting the page just read the cached Firestore document — zero AI tokens per visit.
 #
 # Required GitHub Secrets:
@@ -21,7 +21,7 @@ name: Generate AI Dividend Recommendations
 
 on:
   schedule:
-    - cron: '0 8 * * *'
+    - cron: '0 2 * * *'
   workflow_dispatch:
 
 jobs:

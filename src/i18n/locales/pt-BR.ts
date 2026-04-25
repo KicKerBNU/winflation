@@ -169,6 +169,10 @@ export default {
     evolutionTitle: 'Evolução de yield e dividendos',
     yearlyYieldLabel: 'yield de {yield}%',
     perShareYear: 'por ação / ano',
+    disclaimer: {
+      complianceLead: 'Apenas informativo · não é aconselhamento financeiro',
+      complianceBody: 'Conteúdo gerado por IA. Os valores podem estar incorretos ou desatualizados. Verifique em fontes oficiais e consulte um assessor licenciado antes de qualquer decisão de investimento.',
+    },
   },
   auth: {
     or: 'ou',

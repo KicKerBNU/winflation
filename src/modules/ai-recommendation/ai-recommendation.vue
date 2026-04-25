@@ -103,6 +103,21 @@ const statusConfig: Record<CompanyStatus, { label: string; dot: string; text: st
       </p>
     </header>
 
+    <!-- Compliance band -->
+    <div
+      role="note"
+      class="mx-auto mb-10 max-w-5xl rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200"
+    >
+      <div class="flex items-start gap-2.5">
+        <FontAwesomeIcon icon="triangle-exclamation" class="mt-0.5 flex-shrink-0" />
+        <p class="leading-relaxed">
+          <span class="font-semibold">{{ t('aiRecommendation.disclaimer.complianceLead') }}.</span>
+          {{ ' ' }}
+          <span>{{ t('aiRecommendation.disclaimer.complianceBody') }}</span>
+        </p>
+      </div>
+    </div>
+
     <!-- Loading -->
     <div v-if="store.isLoading" class="mx-auto max-w-5xl space-y-16">
       <div class="animate-pulse overflow-hidden rounded-3xl bg-gray-900">

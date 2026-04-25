@@ -230,6 +230,21 @@ watch(() => themeStore.isDark, () => {
       {{ t('aiRecommendation.backToPicks') }}
     </button>
 
+    <!-- Compliance band -->
+    <div
+      role="note"
+      class="mb-8 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-800 dark:border-amber-800/40 dark:bg-amber-900/20 dark:text-amber-200"
+    >
+      <div class="flex items-start gap-2.5">
+        <FontAwesomeIcon icon="triangle-exclamation" class="mt-0.5 flex-shrink-0" />
+        <p class="leading-relaxed">
+          <span class="font-semibold">{{ t('aiRecommendation.disclaimer.complianceLead') }}.</span>
+          {{ ' ' }}
+          <span>{{ t('aiRecommendation.disclaimer.complianceBody') }}</span>
+        </p>
+      </div>
+    </div>
+
     <!-- Loading -->
     <div v-if="store.isLoading && !company" class="animate-pulse space-y-6">
       <div class="space-y-2">

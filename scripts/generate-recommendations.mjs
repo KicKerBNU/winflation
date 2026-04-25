@@ -26,7 +26,9 @@ try {
 }
 
 const storageBucketName =
-  process.env.FIREBASE_STORAGE_BUCKET?.trim() || `${serviceAccount.project_id}.firebasestorage.app`
+  process.env.FIREBASE_STORAGE_BUCKET?.trim() ||
+  process.env.VITE_FIREBASE_STORAGE_BUCKET?.trim() ||
+  `${serviceAccount.project_id}.firebasestorage.app`
 
 // Init Firebase Admin
 initializeApp({ credential: cert(serviceAccount), storageBucket: storageBucketName })

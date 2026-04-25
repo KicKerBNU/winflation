@@ -169,6 +169,10 @@ export default {
     evolutionTitle: 'Yield & dividend evolution',
     yearlyYieldLabel: '{yield}% yield',
     perShareYear: 'per share / year',
+    disclaimer: {
+      complianceLead: 'Informational only · not financial advice',
+      complianceBody: 'AI-generated content. Figures may be inaccurate or outdated. Verify with primary sources and consult a licensed advisor before any investment decision.',
+    },
   },
   auth: {
     or: 'or',
