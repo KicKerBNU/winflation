@@ -157,7 +157,7 @@ export default {
     kickerNoDate: 'AI weekly',
     headlinePre: 'High-yield Europe,',
     headlineAccent: 'curated',
-    editorialSubtitle: "Ten dividend payers our model thinks beat inflation after tax. Here's the thesis, not the spreadsheet.",
+    editorialSubtitle: "Ten European dividend payers, ranked by yield. Here's the AI's thesis, not the spreadsheet.",
     pickOfTheWeek: 'Pick of the week',
     rankNumber: 'Rank #{rank}',
     alsoRanking: 'Also in the ranking',
@@ -172,7 +172,17 @@ export default {
     disclaimer: {
       complianceLead: 'Informational only · not financial advice',
       complianceBody: 'AI-generated content. Figures may be inaccurate or outdated. Verify with primary sources and consult a licensed advisor before any investment decision.',
+      aboutTitle: 'About these picks',
+      aboutMethodologyTitle: 'Methodology',
+      aboutMethodology: 'The list is generated daily by Google Gemini, an AI language model, from a financial-analyst-style prompt that targets European large-cap dividend payers above 2× the current ECB deposit rate. Numeric figures (price, yield, market cap, dividend history) are AI-generated and may be inaccurate or outdated — verify against primary sources (the issuer\'s investor-relations site, your broker, or official exchange data) before acting.',
+      aboutNotAdviceTitle: 'Not financial advice',
+      aboutNotAdvice: 'Nothing here is a personal investment recommendation or advice. Past performance does not predict future results. Consult a licensed financial advisor before any investment decision.',
+      aboutConflictsTitle: 'Conflicts of interest',
+      aboutConflicts: 'The publisher of winflation.eu may hold positions in some of the listed securities.',
     },
+  },
+  footer: {
+    disclaimer: 'winflation.eu is an informational and educational tool. Nothing on this site is financial, investment, or tax advice. Data may be inaccurate or outdated — verify with primary sources before any investment decision.',
   },
   auth: {
     or: 'or',

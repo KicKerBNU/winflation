@@ -460,6 +460,35 @@ watch(() => themeStore.isDark, () => {
         </div>
       </div>
 
+      <!-- ABOUT THESE PICKS — methodology, not-financial-advice, conflicts -->
+      <section
+        class="mt-12 rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 dark:border-gray-800 dark:bg-gray-900"
+      >
+        <h3 class="mb-6 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+          {{ t('aiRecommendation.disclaimer.aboutTitle') }}
+        </h3>
+        <div class="space-y-5 text-xs leading-relaxed text-gray-600 dark:text-gray-400">
+          <div>
+            <h4 class="mb-1 text-xs font-semibold text-gray-700 dark:text-gray-300">
+              {{ t('aiRecommendation.disclaimer.aboutMethodologyTitle') }}
+            </h4>
+            <p>{{ t('aiRecommendation.disclaimer.aboutMethodology') }}</p>
+          </div>
+          <div>
+            <h4 class="mb-1 text-xs font-semibold text-gray-700 dark:text-gray-300">
+              {{ t('aiRecommendation.disclaimer.aboutNotAdviceTitle') }}
+            </h4>
+            <p>{{ t('aiRecommendation.disclaimer.aboutNotAdvice') }}</p>
+          </div>
+          <div>
+            <h4 class="mb-1 text-xs font-semibold text-gray-700 dark:text-gray-300">
+              {{ t('aiRecommendation.disclaimer.aboutConflictsTitle') }}
+            </h4>
+            <p>{{ t('aiRecommendation.disclaimer.aboutConflicts') }}</p>
+          </div>
+        </div>
+      </section>
+
     </template>
   </div>
 </template>

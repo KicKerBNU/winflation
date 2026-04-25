@@ -96,8 +96,15 @@ const hideChrome = computed(() => ['login', 'register'].includes(route.name as s
     </aside>
 
     <!-- Main content — no left margin on mobile, ml-60 on desktop -->
-    <main class="min-h-screen w-full pb-20 lg:ml-60 lg:pb-0">
-      <RouterView />
+    <main class="flex min-h-screen w-full flex-col pb-20 lg:ml-60 lg:pb-0">
+      <div class="flex-1">
+        <RouterView />
+      </div>
+      <footer
+        class="border-t border-gray-200 bg-white px-4 py-6 text-xs leading-relaxed text-gray-500 sm:px-6 lg:px-8 dark:border-gray-800 dark:bg-gray-950 dark:text-gray-400"
+      >
+        <p class="mx-auto max-w-3xl text-center">{{ t('footer.disclaimer') }}</p>
+      </footer>
     </main>
 
     <!-- Mobile top header -->

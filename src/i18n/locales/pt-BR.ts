@@ -157,7 +157,7 @@ export default {
     kickerNoDate: 'IA semanal',
     headlinePre: 'Europa de alto yield,',
     headlineAccent: 'curada',
-    editorialSubtitle: 'Dez pagadoras de dividendos que nosso modelo acredita vencerem a inflação após impostos. Aqui está a tese, não a planilha.',
+    editorialSubtitle: 'Dez pagadoras de dividendos europeias, ordenadas por yield. Aqui está a tese da IA, não a planilha.',
     pickOfTheWeek: 'Escolha da semana',
     rankNumber: 'Posição #{rank}',
     alsoRanking: 'Também no ranking',
@@ -172,7 +172,17 @@ export default {
     disclaimer: {
       complianceLead: 'Apenas informativo · não é aconselhamento financeiro',
       complianceBody: 'Conteúdo gerado por IA. Os valores podem estar incorretos ou desatualizados. Verifique em fontes oficiais e consulte um assessor licenciado antes de qualquer decisão de investimento.',
+      aboutTitle: 'Sobre estes picks',
+      aboutMethodologyTitle: 'Metodologia',
+      aboutMethodology: 'A lista é gerada diariamente pelo Google Gemini, um modelo de linguagem por IA, a partir de um prompt no estilo de analista financeiro que busca pagadoras de dividendos europeias de grande capitalização com yield acima de 2× a atual taxa de depósito do BCE. Os valores numéricos (preço, yield, capitalização de mercado, histórico de dividendos) são gerados por IA e podem estar incorretos ou desatualizados — verifique em fontes oficiais (site de Relações com Investidores da empresa, sua corretora, ou dados oficiais da bolsa) antes de qualquer decisão.',
+      aboutNotAdviceTitle: 'Não é aconselhamento financeiro',
+      aboutNotAdvice: 'Nada aqui é uma recomendação de investimento personalizada ou aconselhamento. Resultados passados não garantem resultados futuros. Consulte um assessor financeiro licenciado antes de qualquer decisão de investimento.',
+      aboutConflictsTitle: 'Conflitos de interesse',
+      aboutConflicts: 'O publicador de winflation.eu pode possuir posições em algumas das ações listadas.',
     },
+  },
+  footer: {
+    disclaimer: 'winflation.eu é uma ferramenta informativa e educacional. Nada neste site constitui aconselhamento financeiro, de investimento ou fiscal. Os dados podem estar incorretos ou desatualizados — verifique em fontes oficiais antes de qualquer decisão de investimento.',
   },
   auth: {
     or: 'ou',

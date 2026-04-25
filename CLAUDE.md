@@ -68,7 +68,7 @@ scripts/
 
 All under `scripts/`. Each requires `FIREBASE_SERVICE_ACCOUNT` (and `GEMINI_API_KEY` where the script calls Gemini) as env vars.
 
-- `update-logo.mjs <TICKER> <URL>` — replace one ticker's logo. Uploads to Storage, updates `logos/<TICKER>` and patches `ai-recommendations/latest` so the new logo appears immediately.
+- `update-logo.mjs <TICKER> <URL>` — replace one ticker's logo. Writes the file to `public/logos/<TICKER>.<ext>` (Netlify serves it same-origin at `/logos/<TICKER>.<ext>`), updates `logos/<TICKER>` Firestore doc, and patches `ai-recommendations/latest`. Requires a `git push` afterward to trigger a Netlify rebuild — Firebase Storage is **not** used (the project is on Spark/free, no Blaze plan).
 - `fetch-company-logos.mjs` — re-resolves logos for every company currently in `ai-recommendations/latest` via Gemini + fallback chain.
 - `generate-recommendations.mjs` — full daily pipeline (Gemini → Firestore). Same script the GitHub Action runs.
 

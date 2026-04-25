@@ -237,9 +237,11 @@ node --env-file=.env.local scripts/update-logo.mjs ISP.MI \
 What it does:
 
 1. Downloads the image, validates content-type and size (≤ 2 MB)
-2. Uploads it to Firebase Storage at `logos/<TICKER>.<ext>`
+2. Writes the file to `public/logos/<TICKER>.<ext>` (bundled with the deploy, served same-origin at `/logos/<TICKER>.<ext>`)
 3. Updates the Firestore `logos/<TICKER>` document
-4. Patches `ai-recommendations/latest` so the new logo appears on the live page immediately (otherwise it would only refresh on the next 02:00 UTC run)
+4. Patches `ai-recommendations/latest`
+
+After the script finishes, **commit the new file and push** — Netlify will rebuild and serve the logo at `https://winflation.eu/logos/<TICKER>.<ext>`.
 
 ### Refresh all logos for the current picks
 
@@ -270,12 +272,12 @@ Findings from a critical review of the AI Dividend Picks feature, ordered by sev
 
 The site publishes content shaped like an investment recommendation (per-stock `bullish/neutral/bearish` labels, daily "Pick of the week", ranked yields). Under EU rules (MAR, ESMA Reg 2016/958) this triggers disclosure obligations even for non-licensed publishers.
 
-- [ ] Add a visible compliance band on `/ai-recommendation` and `/ai-recommendation/:ticker` ("informational only · not financial advice · AI-generated · verify before acting")
-- [ ] Add a global footer disclaimer covering the whole site (inflation/dividends pages also touch financial topics)
-- [ ] Add an "About these picks" section on the AI pages: methodology summary, AI-hallucination warning, data-freshness statement, DYOR call-out
-- [ ] Add a positions / conflicts-of-interest disclosure (state whether the publisher holds any of the listed securities)
-- [ ] Remove the unsupported claim in `aiRecommendation.editorialSubtitle` ("our model thinks beat inflation after tax") — neither inflation nor tax adjustment is computed in the pipeline
-- [ ] Translate all new disclosure copy to pt-BR
+- [x] Add a visible compliance band on `/ai-recommendation` and `/ai-recommendation/:ticker` ("informational only · not financial advice · AI-generated · verify before acting")
+- [x] Add a global footer disclaimer covering the whole site (inflation/dividends pages also touch financial topics)
+- [x] Add an "About these picks" section on the AI pages: methodology summary, AI-hallucination warning, data-freshness statement, DYOR call-out
+- [x] Add a positions / conflicts-of-interest disclosure (state whether the publisher holds any of the listed securities)
+- [x] Remove the unsupported claim in `aiRecommendation.editorialSubtitle` ("our model thinks beat inflation after tax") — neither inflation nor tax adjustment is computed in the pipeline
+- [x] Translate all new disclosure copy to pt-BR
 
 ### P1 — Data integrity (fabricated numbers)
 
@@ -324,14 +326,11 @@ The current screen is `dividendYield > 2× ECB`. High yield + large cap is one o
 - [ ] Fix i18n drift: `aiRecommendation.refreshesDaily` still reads "8:00 UTC" but cron is now `02:00 UTC`
 - [ ] Update README cron reference (this file says 08:00 UTC; workflow now runs at 02:00 UTC)
 
-### P4 — Find a free tier for Storage logos
+### P4 — Replace Firebase Storage with a free image-hosting alternative
 
-The logo backfill script fetches logos from arbitrary URLs the Gemini API returns. This is a privacy/security risk and also a bandwidth hog.
+**Resolved**: logos now live in `public/logos/<TICKER>.<ext>` and are served same-origin via Netlify (`/logos/<TICKER>.<ext>`). No third-party CDN, no Firebase Storage Blaze plan, no CORS. Tradeoff: changing a logo requires a commit + push to trigger a Netlify rebuild — fine for stable EU large-cap tickers.
 
-- [ ] Find a free tier for Firebase Storage that supports public objects (e.g. 1 GB free, 10 GB max)
-- [ ] Limit logo URLs to a whitelist of well-known CDNs (Wikimedia, Cloudflare, Cloudfront, etc.)
-- [ ] Add a rate limit to the logo backfill script (e.g. 10 requests per minute)
-- [ ] Add a cache busting query parameter to the logo URL (e.g. `?v=1`)
-- [ ] Add a logging statement to the logo backfill script when a logo is fetched from an arbitrary URL
-- [ ] Add a logging statement to the logo backfill script when a logo is fetched from a whitelist URL
-- [ ] Add a logging statement to the logo backfill script when a logo is fetched from a whitelist URL
+- [x] Pick the host: **same-origin via `public/logos/`** (Netlify serves it from the existing free deploy)
+- [x] Refactor `scripts/update-logo.mjs` to write files to `public/logos/` and skip Firebase Storage entirely
+- [ ] Refactor `scripts/fetch-company-logos.mjs` similarly (still falls back to external hotlinks; lower urgency since `update-logo.mjs` is the canonical fix-a-bad-logo path)
+- [x] Document the new flow in `README.md`
