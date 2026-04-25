@@ -238,17 +238,11 @@ ${exampleDividendsPerYear}
       "status": "bullish",
       "pro": {
         "en-US": "One sentence in English explaining the main investment strength.",
-        "pt-BR": "Same sentence in Brazilian Portuguese.",
-        "fr-FR": "Same sentence in French.",
-        "it-IT": "Same sentence in Italian.",
-        "es-ES": "Same sentence in Spanish."
+        "pt-BR": "Same sentence in Brazilian Portuguese."
       },
       "con": {
         "en-US": "One sentence in English explaining the main investment risk.",
-        "pt-BR": "Same sentence in Brazilian Portuguese.",
-        "fr-FR": "Same sentence in French.",
-        "it-IT": "Same sentence in Italian.",
-        "es-ES": "Same sentence in Spanish."
+        "pt-BR": "Same sentence in Brazilian Portuguese."
       }
     }
   ]

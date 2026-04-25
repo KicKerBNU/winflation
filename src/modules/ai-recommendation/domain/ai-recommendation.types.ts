@@ -15,9 +15,6 @@ export type CompanyStatus = 'bullish' | 'neutral' | 'bearish'
 export type LocalizedText = {
   'en-US': string
   'pt-BR': string
-  'fr-FR': string
-  'it-IT': string
-  'es-ES': string
 }
 
 export interface AiCompanyBase {
