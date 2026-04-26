@@ -1,6 +1,6 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
-import { fetchAiRecommendationsPhase1, fetchCompanyHistory } from '../api/ai-recommendation.api'
+import { fetchAiRecommendationsPhase1 } from '../api/ai-recommendation.api'
 import type { AiCompanyCard } from '../domain/ai-recommendation.types'
 
 export const useAiRecommendationStore = defineStore('ai-recommendation', () => {
@@ -21,26 +21,12 @@ export const useAiRecommendationStore = defineStore('ai-recommendation', () => {
       generatedAt.value = phase1.generatedAt
       cards.value = phase1.companies.map((c) => ({
         ...c,
-        historicYields: c.historicYields ?? null,
-        dividendsPerYear: c.dividendsPerYear ?? null,
+        historicYields: c.historicYields ?? [],
+        dividendsPerYear: c.dividendsPerYear ?? [],
       }))
-      isLoading.value = false
-
-      await Promise.all(
-        cards.value.map(async (card, idx) => {
-          if (card.historicYields && card.dividendsPerYear) return
-          try {
-            const history = await fetchCompanyHistory(card.ticker, card.company, card.currency)
-            if (history) {
-              cards.value[idx] = { ...cards.value[idx], ...history }
-            }
-          } catch {
-            // leave history as null — card already visible
-          }
-        }),
-      )
     } catch {
       error.value = 'Failed to load AI recommendations.'
+    } finally {
       isLoading.value = false
     }
   }

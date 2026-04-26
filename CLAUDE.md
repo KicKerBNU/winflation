@@ -14,7 +14,9 @@
 - **Chart.js 4** (line and bar charts)
 - **FontAwesome 7** (icons via `@fortawesome/vue-fontawesome`, registered globally as `<FontAwesomeIcon>`)
 - **Firebase** (Firestore for AI recommendation cache, Analytics)
-- **Google Gemini** (`gemini-flash-latest` — AI economic briefings and company history)
+- **Google Gemini** (`gemini-flash-latest` — AI economic briefings; AI Picks ticker selection + pro/con narrative only, never numeric data)
+- **Yahoo Finance** (`yahoo-finance2` npm, server-side cron only — primary numeric source for AI Picks: price, market cap, 5y dividend history)
+- **Financial Modeling Prep** (used by dividends module client-side; per-ticker fallback for AI Picks when Yahoo fails)
 - **Storybook 10** (component development and visual testing)
 
 ## Folder Structure
@@ -56,8 +58,10 @@ src/
 └── main.ts             # App bootstrap — registers Pinia, Router, i18n, FA
 
 scripts/
-├── generate-recommendations.mjs   # Daily Gemini → Firestore job (cron)
-├── fetch-company-logos.mjs        # One-shot logo backfill for all current picks
+├── eu-dividend-universe.mjs       # Curated ~55-ticker spine list (manual monthly review)
+├── generate-recommendations.mjs   # Daily quality-screened pipeline (cron)
+├── bulk-fetch-spine-logos.mjs     # One-time logo backfill for the entire SPINE
+├── fetch-company-logos.mjs        # Legacy logo backfill (mostly redundant after spine is pre-loaded)
 └── update-logo.mjs                # One-off logo replacement for a single ticker
 
 .github/workflows/
@@ -69,8 +73,18 @@ scripts/
 All under `scripts/`. Each requires `FIREBASE_SERVICE_ACCOUNT` (and `GEMINI_API_KEY` where the script calls Gemini) as env vars.
 
 - `update-logo.mjs <TICKER> <URL>` — replace one ticker's logo. Writes the file to `public/logos/<TICKER>.<ext>` (Netlify serves it same-origin at `/logos/<TICKER>.<ext>`), updates `logos/<TICKER>` Firestore doc, and patches `ai-recommendations/latest`. Requires a `git push` afterward to trigger a Netlify rebuild — Firebase Storage is **not** used (the project is on Spark/free, no Blaze plan).
+- `bulk-fetch-spine-logos.mjs` — one-time backfill of every ticker in `eu-dividend-universe.mjs`. Same per-ticker logic as `update-logo.mjs` but loops the whole SPINE list. Skips tickers that already have a file in `public/logos/` unless `--force`. Uses Yahoo profile → Gemini suggestion → Clearbit → favicon fallback chain. Run after editing the spine list to pre-populate logos for new additions.
 - `fetch-company-logos.mjs` — re-resolves logos for every company currently in `ai-recommendations/latest` via Gemini + fallback chain.
-- `generate-recommendations.mjs` — full daily pipeline (Gemini → Firestore). Same script the GitHub Action runs.
+- `generate-recommendations.mjs` — daily quality-screened pipeline.
+  - **Candidate pool**: curated `SPINE` from `eu-dividend-universe.mjs` + Gemini-suggested watch list (~10 names beyond the spine).
+  - **Enrichment**: Yahoo Finance for quote, profile, `financialData` (TTM payout, ROE, debt, EBITDA, FCF), and 5-year dividend history. FMP `/stable/profile` is a fallback when Yahoo fails for a specific ticker.
+  - **Quality metrics**: payout ratio, debt/EBITDA, FCF coverage, ROE, dividend streak (years without > 30% cut), 5-year dividend CAGR.
+  - **Cascading filter**: Conservative → Moderate → Permissive — the strictest tier with ≥ 10 survivors wins. Banks/insurers skip debt/EBITDA. Utilities/REITs get a higher payout cap.
+  - **Composite Quality Score (0–10)**: sustainability 40% + growth 30% + profitability 20% + yield 10%.
+  - **Diversification**: max 3 per sector, max 3 per country, greedy by score.
+  - **Narratives**: Gemini writes pro/con/status per pick, with the actual computed metrics fed in as context.
+  - **Persistence**: writes both `ai-recommendations/latest` and `ai-recommendations/<YYYY-MM-DD>` snapshot. Includes `qualityTier`, candidate counts at each stage, and sector/country distribution for transparency.
+- `eu-dividend-universe.mjs` — the curated spine list. Plain string array of Yahoo-formatted tickers. Review monthly: drop names that have cut dividends or had quality deterioration; add new EU large-caps with established 5+ year records. Script tolerates the list shrinking or growing.
 
 ## Features
 

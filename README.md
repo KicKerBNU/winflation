@@ -91,11 +91,16 @@ Daily AI-curated list of the top 10 European dividend stocks for long-term incom
 
 **How it works:**
 
-1. A GitHub Actions workflow runs every day at **08:00 UTC**
-2. It calls the Google Gemini API with a structured financial prompt
-3. The result is written to **Firestore** (`ai-recommendations/latest`)
-4. When a user visits the page, the app reads from Firestore — no Gemini wait time on the client
-5. If Firestore data is older than 36 hours (e.g. the daily job failed), the app falls back to calling Gemini directly
+1. A GitHub Actions workflow runs every day at **02:00 UTC**.
+2. **Candidate pool** = curated EU dividend spine (`scripts/eu-dividend-universe.mjs`, ~55 large-caps) + Gemini-suggested watch list (~10 names not on the spine).
+3. **Yahoo Finance** (`yahoo-finance2` npm) enriches each candidate with quote, profile, `financialData` (TTM payout ratio, ROE, debt, EBITDA, FCF, revenue), and 5-year dividend history. FMP `/stable/profile` is a per-ticker fallback if Yahoo fails.
+4. **Quality metrics** are computed: payout ratio, debt/EBITDA, FCF coverage, ROE, dividend streak (consecutive years without > 30% cut), 5-year dividend CAGR.
+5. **Cascading hard filter** — Conservative → Moderate → Permissive. The strictest tier that yields ≥ 10 survivors is used. Sector-aware: banks/insurers skip the debt/EBITDA gate; utilities/REITs get a higher payout cap.
+6. **Composite Quality Score (0–10)** weighted: sustainability 40% / growth 30% / profitability 20% / yield 10%.
+7. **Diversification caps** — max 3 per sector, max 3 per country. Greedy by score.
+8. **Narratives** — Gemini writes one sentence each for `pro` / `con` / `status` *per pick*, with the actual computed metrics fed in as context (no generic platitudes).
+9. The result is written to Firestore: `ai-recommendations/latest` (read by the page) **and** `ai-recommendations/<YYYY-MM-DD>` (audit-trail snapshot, kept indefinitely). The doc includes the qualityTier used, candidate counts at each stage, and sector/country distribution.
+10. When a user visits the page, the app reads `ai-recommendations/latest`. If Firestore is unreachable, falls back to localStorage. **There is no runtime Gemini fallback** — fabricated financial figures are never shown to the user.
 
 **Magazine-style list (`/ai-recommendation`):**
 
@@ -160,9 +165,10 @@ AI-generated content (economic briefings) is also returned in the user's active 
 |---------|---------|-----------|
 | ECB Data API | Interest rates | 24 h |
 | Eurostat | Inflation (HICP), government debt | 24 h |
-| Financial Modeling Prep | Dividend stock data | 24 h |
-| Google Gemini | AI economic briefings, company history | 24 h / monthly |
-| Firebase Firestore | Pre-generated AI recommendations | Browser session |
+| Financial Modeling Prep | Dividend stock list (client) + AI Picks numeric fallback | 24 h |
+| Yahoo Finance (`yahoo-finance2`) | AI Picks: real-time price, market cap, 5-year dividend history | Daily (cron only — never client-side) |
+| Google Gemini | AI economic briefings; AI Picks: ticker selection + pro/con narrative only (no numbers) | 24 h / monthly |
+| Firebase Firestore | Pre-generated AI recommendations (latest + dated snapshots) | Browser session |
 
 ---
 
@@ -221,9 +227,13 @@ VITE_FIREBASE_MEASUREMENT_ID=
 
 ### Daily recommendations script (local test)
 
+Run from the project root so it picks up `.env.local` (which already has `GEMINI_API_KEY`, `FIREBASE_SERVICE_ACCOUNT`, and `VITE_FMP_API_KEY`):
+
 ```bash
-GEMINI_API_KEY=<key> FIREBASE_SERVICE_ACCOUNT=<json> node scripts/generate-recommendations.mjs
+node --env-file=.env.local scripts/generate-recommendations.mjs
 ```
+
+The script reads `FMP_API_KEY` (or falls back to `VITE_FMP_API_KEY`) for the Yahoo→FMP fallback path. If neither is set, the FMP fallback is disabled and only Yahoo is used.
 
 ### Replace a single company logo
 
@@ -243,11 +253,33 @@ What it does:
 
 After the script finishes, **commit the new file and push** — Netlify will rebuild and serve the logo at `https://winflation.eu/logos/<TICKER>.<ext>`.
 
-### Refresh all logos for the current picks
+### Bulk-fetch logos for the entire SPINE (one-time / occasional)
+
+Pre-loads logos for every ticker in `scripts/eu-dividend-universe.mjs` into `public/logos/`. Since picks come from the spine, this means the daily cron rarely needs to resolve a logo at runtime.
+
+```bash
+node --env-file=.env.local scripts/bulk-fetch-spine-logos.mjs           # skip tickers that already have a logo file
+node --env-file=.env.local scripts/bulk-fetch-spine-logos.mjs --force   # redo all
+```
+
+What it does for each ticker:
+
+1. Resolves the company website domain via Yahoo profile
+2. Tries logo URL candidates in priority order: Gemini suggestion → Clearbit → Google favicon → DuckDuckGo favicon
+3. Validates (image content-type, ≤ 2 MB) and writes to `public/logos/<TICKER>.<ext>`
+4. Updates Firestore `logos/<TICKER>` with the same URL
+
+After running, **commit `public/logos/` and push** — Netlify rebuilds and serves the logos same-origin. Failed tickers are listed at the end of the run; fix them individually with `update-logo.mjs`.
+
+The daily `generate-recommendations.mjs` cron auto-populates `logoUrl` on each pick from `public/logos/`, so once the spine is backfilled, no further logo work is needed in CI.
+
+### Refresh logos for non-spine picks (legacy)
 
 ```bash
 GEMINI_API_KEY=<key> FIREBASE_SERVICE_ACCOUNT=<json> node scripts/fetch-company-logos.mjs
 ```
+
+Mostly redundant now that the spine is pre-loaded — kept for the rare watch-list pick that lands in `ai-recommendations/latest`. Uses Firebase Storage (will fall back to source URL if Storage isn't enabled).
 
 ---
 
@@ -283,22 +315,28 @@ The site publishes content shaped like an investment recommendation (per-stock `
 
 The pipeline asks Gemini to produce `currentPrice`, `dividendYield`, `annualDividend`, `marketCap`, `priceChangePercent`, plus 5-year `historicYields` and `dividendsPerYear`. These are deterministic public numbers an LLM should not be inventing. Knowledge cutoff + "as of today" prompts produce confident fabrications.
 
-- [ ] Refactor `scripts/generate-recommendations.mjs` to fetch all numeric fields from Financial Modeling Prep (the FMP key is already configured for the dividends module)
-- [ ] Use Gemini only for narrative output (`pro`, `con`, thesis paragraph)
-- [ ] Validate ticker existence and exchange/suffix consistency before saving (e.g. `*.MI` → Borsa Italiana)
-- [ ] Persist daily snapshots instead of overwriting `ai-recommendations/latest` — enables backtest, audit trail, and tracking actual past calls
+- [x] Refactor `scripts/generate-recommendations.mjs` to source numeric fields from a real-time API. **Decision:** Yahoo Finance (`yahoo-finance2` npm) as primary (no API key, generous rate limits, full EU exchange coverage) with FMP `/profile` as a per-ticker fallback. Avoided FMP-only because of its 100/day free-tier ceiling.
+- [x] Use Gemini only for narrative output (`pro`, `con`, `status`) and ticker selection — never numeric data
+- [x] Validate ticker existence before saving — Yahoo returning no quote drops the ticker; FMP fallback provides a second chance
+- [x] Persist daily snapshots — script now writes to both `ai-recommendations/latest` and `ai-recommendations/<YYYY-MM-DD>`
 
 ### P2 — Selection methodology (yield-trap risk)
 
 The current screen is `dividendYield > 2× ECB`. High yield + large cap is one of the most reliable markers of an upcoming dividend cut (Vodafone, Orsted, Société Générale historical episodes). A real dividend screen prioritizes sustainability, not yield.
 
-- [ ] Add payout-ratio screen (dividend ÷ EPS, target < ~70%)
-- [ ] Add free-cash-flow coverage check (dividend ÷ FCF)
-- [ ] Add debt/EBITDA and interest-coverage filter
-- [ ] Add dividend-growth-streak filter (years of consecutive non-cuts/increases)
-- [ ] Add 90-day earnings-revision direction
-- [ ] Add forward P/E vs sector median
-- [ ] Enforce diversification caps (e.g. max 3 per sector, max 2 per country)
+- [x] Add payout-ratio screen (TTM, sector-aware: utilities/REITs allowed higher cap)
+- [x] Add free-cash-flow coverage check (FCF ÷ annual dividends paid)
+- [x] Add debt/EBITDA filter (financials excluded — leverage is structural for banks)
+- [x] Add dividend-growth-streak filter (consecutive years without > 30% cut, 5y window)
+- [x] Enforce diversification caps (max 3 per sector, max 3 per country)
+- [x] Cascading quality tiers (Conservative → Moderate → Permissive — strictest tier that yields ≥10 survivors wins)
+- [x] Composite Quality Score (0–10) — weighted: sustainability 40% / growth 30% / profitability 20% / yield 10%
+- [x] Curated EU dividend universe (`scripts/eu-dividend-universe.mjs`) — ~55 large-caps as the spine, augmented by ~10 Gemini "watch list" candidates per run
+- [x] Metric-aware narratives — Gemini sees the actual numbers when writing pro/con per pick (no more generic platitudes)
+- [ ] Change the design to keep it clear the different strategies for each pick, we have CONSERVATIVE, MODERATE and PERMISSIVE. lets display for the user this differences too.
+- [ ] 90-day earnings-revision direction — skipped, not freely available from Yahoo
+- [ ] Forward P/E vs sector median — skipped, sector medians not available cheaply
+- [ ] Monthly review of `eu-dividend-universe.mjs` — manual maintenance task; remove names that have cut dividends or had quality deterioration
 
 ### P2 — Brand promise: inflation comparison
 

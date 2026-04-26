@@ -65,7 +65,8 @@
       "Bash(git -C /Users/evertonbuzzi/Dev/winflation.eu/.claude/worktrees/naughty-poincare-ad831a add scripts/generate-recommendations.mjs src/i18n/index.ts src/i18n/locales/es-ES.ts src/i18n/locales/fr-FR.ts src/i18n/locales/it-IT.ts src/modules/ai-recommendation/api/ai-recommendation.api.ts src/modules/ai-recommendation/domain/ai-recommendation.types.ts src/modules/inflation/api/country-insights.api.ts)",
       "Bash(git -C /Users/evertonbuzzi/Dev/winflation.eu/.claude/worktrees/naughty-poincare-ad831a commit -m ' *)",
       "Bash(git -C /Users/evertonbuzzi/Dev/winflation.eu/.claude/worktrees/naughty-poincare-ad831a add CLAUDE.md)",
-      "Bash(git -C /Users/evertonbuzzi/Dev/winflation.eu/.claude/worktrees/naughty-poincare-ad831a push -u origin claude/naughty-poincare-ad831a)"
+      "Bash(git -C /Users/evertonbuzzi/Dev/winflation.eu/.claude/worktrees/naughty-poincare-ad831a push -u origin claude/naughty-poincare-ad831a)",
+      "Bash(node --check /Users/evertonbuzzi/Dev/winflation.eu/scripts/bulk-fetch-spine-logos.mjs)"
     ]
   },
   "hooks": {

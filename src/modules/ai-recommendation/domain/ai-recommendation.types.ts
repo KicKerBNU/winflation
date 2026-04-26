@@ -11,10 +11,27 @@ export interface YearlyDividend {
 }
 
 export type CompanyStatus = 'bullish' | 'neutral' | 'bearish'
+export type QualityTier = 'conservative' | 'moderate' | 'permissive'
 
 export type LocalizedText = {
   'en-US': string
   'pt-BR': string
+}
+
+export interface QualityBreakdown {
+  sustainability: number
+  growth: number
+  profitability: number
+  yield: number
+}
+
+export interface CompanyMetrics {
+  payoutRatio: number | null
+  roe: number | null
+  debtToEbitda: number | null
+  fcfCoverage: number | null
+  dividendStreak: number
+  dividendCagr5y: number | null
 }
 
 export interface AiCompanyBase {
@@ -24,6 +41,7 @@ export interface AiCompanyBase {
   country: string
   countryCode: string
   sector: string
+  industry?: string
   exchange: string
   currency: string
   website: string
@@ -36,6 +54,9 @@ export interface AiCompanyBase {
   pro: LocalizedText
   con: LocalizedText
   logoUrl?: string
+  qualityScore?: number
+  qualityBreakdown?: QualityBreakdown
+  metrics?: CompanyMetrics
 }
 
 export interface AiCompanyCard extends AiCompanyBase {
@@ -43,18 +64,29 @@ export interface AiCompanyCard extends AiCompanyBase {
   dividendsPerYear: YearlyDividend[] | null
 }
 
-export interface AiCompanyHistory {
-  historicYields: YearlyYield[]
-  dividendsPerYear: YearlyDividend[]
-}
-
 export interface AiPhase1Company extends AiCompanyBase {
   historicYields?: YearlyYield[]
   dividendsPerYear?: YearlyDividend[]
 }
 
+export interface DiversificationSummary {
+  maxPerSector: number
+  maxPerCountry: number
+  sectors: Record<string, number>
+  countries: Record<string, number>
+}
+
 export interface AiPhase1Response {
   generatedAt: string
+  ecbDepositRate?: number
+  minYield?: number
+  yieldMultiplier?: number
+  qualityTier?: QualityTier
+  qualityTierLabel?: string
+  poolSize?: number
+  enrichedCount?: number
+  qualifiedCount?: number
+  diversification?: DiversificationSummary
   companies: AiPhase1Company[]
 }
 
