@@ -372,3 +372,6 @@ The current screen is `dividendYield > 2× ECB`. High yield + large cap is one o
 - [x] Refactor `scripts/update-logo.mjs` to write files to `public/logos/` and skip Firebase Storage entirely
 - [ ] Refactor `scripts/fetch-company-logos.mjs` similarly (still falls back to external hotlinks; lower urgency since `update-logo.mjs` is the canonical fix-a-bad-logo path)
 - [x] Document the new flow in `README.md`
+
+### P5 — Add MONTHLY Dividend strategy
+= [ ] - Create a new module dedicated to monthly income investing on all markets of the world not just European ones.
