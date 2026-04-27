@@ -7,6 +7,7 @@ import { aiRecommendationRoutes } from '@/modules/ai-recommendation/ai-recommend
 import { authRoutes } from '@/modules/auth/auth.routes'
 import { followRoutes } from '@/modules/follow/follow.routes'
 import { mineralsRoutes } from '@/modules/minerals/minerals.routes'
+import { settingsRoutes } from '@/modules/settings/settings.routes'
 import { useAuthStore } from '@/modules/auth/store/auth.store'
 
 export const router = createRouter({
@@ -20,6 +21,7 @@ export const router = createRouter({
     ...mineralsRoutes,
     ...authRoutes,
     ...followRoutes,
+    ...settingsRoutes,
   ],
 })
 

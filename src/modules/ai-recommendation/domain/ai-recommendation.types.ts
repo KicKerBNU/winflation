@@ -4,10 +4,16 @@ export interface YearlyYield {
   dividend: number
 }
 
+export interface DividendPayout {
+  date: string
+  amount: number
+}
+
 export interface YearlyDividend {
   year: number
   totalAmount: number
   payments: number
+  payouts?: DividendPayout[]
 }
 
 export type CompanyStatus = 'bullish' | 'neutral' | 'bearish'
@@ -56,6 +62,8 @@ export interface AiCompanyBase {
   logoUrl?: string
   qualityScore?: number
   qualityBreakdown?: QualityBreakdown
+  qualifyingTier?: QualityTier
+  qualifyingTierLabel?: string
   metrics?: CompanyMetrics
 }
 
@@ -81,10 +89,10 @@ export interface AiPhase1Response {
   ecbDepositRate?: number
   minYield?: number
   yieldMultiplier?: number
-  qualityTier?: QualityTier
-  qualityTierLabel?: string
+  tierDistribution?: Partial<Record<QualityTier, number>>
   poolSize?: number
   enrichedCount?: number
+  tierFloorCount?: number
   qualifiedCount?: number
   diversification?: DiversificationSummary
   companies: AiPhase1Company[]

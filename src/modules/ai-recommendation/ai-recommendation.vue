@@ -2,12 +2,87 @@
 import { computed } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useAiRecommendationStore } from './store/ai-recommendation.store'
-import type { AiCompanyCard, YearlyYield, CompanyStatus, LocalizedText } from './domain/ai-recommendation.types'
+import { useInflationStore } from '@/modules/inflation/store/inflation.store'
+import { useAuthStore } from '@/modules/auth/store/auth.store'
+import { useUserProfileStore } from '@/modules/auth/store/user-profile.store'
+import type { AiCompanyCard, YearlyYield, CompanyStatus, LocalizedText, QualityTier } from './domain/ai-recommendation.types'
 
 const { t, locale } = useI18n()
 const store = useAiRecommendationStore()
+const inflationStore = useInflationStore()
+const authStore = useAuthStore()
+const profileStore = useUserProfileStore()
 
 store.init()
+inflationStore.init()
+
+type BeatVerdict = 'beats' | 'matches' | 'loses'
+interface InflationBeat {
+  verdict: BeatVerdict
+  amount: number          // |nominal − userHICP|, 1-decimal
+  nominal: number
+  inflation: number
+  countryCode: string
+  countryName: string
+}
+
+const userInflation = computed(() => {
+  const code = profileStore.taxCountryCode
+  if (!code) return null
+  return inflationStore.countries.find((c) => c.countryCode === code) ?? null
+})
+
+const showInflationBadge = computed(
+  () => authStore.isAuthenticated && profileStore.hasTaxCountry && userInflation.value !== null,
+)
+
+const showInflationCta = computed(
+  () => authStore.isAuthenticated && !profileStore.hasTaxCountry && profileStore.isLoaded,
+)
+
+function inflationBeat(card: AiCompanyCard): InflationBeat | null {
+  const infl = userInflation.value
+  if (!infl) return null
+  const diff = +(card.dividendYield - infl.rate).toFixed(1)
+  const verdict: BeatVerdict = diff > 0 ? 'beats' : diff < 0 ? 'loses' : 'matches'
+  return {
+    verdict,
+    amount: Math.abs(diff),
+    nominal: card.dividendYield,
+    inflation: infl.rate,
+    countryCode: infl.countryCode,
+    countryName: infl.country,
+  }
+}
+
+const beatPalette: Record<BeatVerdict, { pill: string; icon: string }> = {
+  beats: {
+    pill: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-900/30 dark:text-emerald-300',
+    icon: 'arrow-trend-up',
+  },
+  matches: {
+    pill: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800/40 dark:bg-amber-900/30 dark:text-amber-300',
+    icon: 'minus',
+  },
+  loses: {
+    pill: 'border-red-200 bg-red-50 text-red-700 dark:border-red-800/40 dark:bg-red-900/30 dark:text-red-300',
+    icon: 'arrow-trend-down',
+  },
+}
+
+function beatShortText(beat: InflationBeat): string {
+  if (beat.verdict === 'beats') return t('aiRecommendation.inflationBeatShort', { amount: beat.amount.toFixed(1) })
+  if (beat.verdict === 'loses') return t('aiRecommendation.inflationBeatShortNeg', { amount: beat.amount.toFixed(1) })
+  return t('aiRecommendation.inflationBeatShortMatch')
+}
+
+function beatTooltip(beat: InflationBeat): string {
+  return t('aiRecommendation.inflationBeatHint', {
+    nominal: beat.nominal.toFixed(2),
+    inflation: beat.inflation.toFixed(2),
+    country: beat.countryName,
+  })
+}
 
 const SERIF = "ui-serif, Georgia, 'Times New Roman', serif"
 
@@ -57,6 +132,30 @@ function barHeightPx(h: YearlyYield, values: YearlyYield[], max: number): string
 
 function routeForCompany(ticker: string) {
   return { name: 'ai-recommendation-detail', params: { ticker: encodeURIComponent(ticker) } }
+}
+
+const tierConfig: Record<QualityTier, { label: string; short: string; desc: string; pill: string; iconColor: string }> = {
+  conservative: {
+    label: 'aiRecommendation.tierConservative',
+    short: 'aiRecommendation.tierConservativeShort',
+    desc: 'aiRecommendation.tierConservativeDesc',
+    pill: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-800/40 dark:bg-sky-900/30 dark:text-sky-300',
+    iconColor: 'text-sky-500 dark:text-sky-400',
+  },
+  moderate: {
+    label: 'aiRecommendation.tierModerate',
+    short: 'aiRecommendation.tierModerateShort',
+    desc: 'aiRecommendation.tierModerateDesc',
+    pill: 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800/40 dark:bg-indigo-900/30 dark:text-indigo-300',
+    iconColor: 'text-indigo-500 dark:text-indigo-400',
+  },
+  permissive: {
+    label: 'aiRecommendation.tierPermissive',
+    short: 'aiRecommendation.tierPermissiveShort',
+    desc: 'aiRecommendation.tierPermissiveDesc',
+    pill: 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800/40 dark:bg-orange-900/30 dark:text-orange-300',
+    iconColor: 'text-orange-500 dark:text-orange-400',
+  },
 }
 
 const statusConfig: Record<CompanyStatus, { label: string; dot: string; text: string; bar: string }> = {
@@ -118,6 +217,25 @@ const statusConfig: Record<CompanyStatus, { label: string; dot: string; text: st
       </div>
     </div>
 
+    <!-- Tax-country CTA (logged in, no country set) -->
+    <RouterLink
+      v-if="showInflationCta"
+      to="/settings"
+      class="mx-auto mb-10 flex max-w-5xl cursor-pointer items-start gap-3 rounded-xl border border-violet-200 bg-violet-50 px-4 py-3 text-sm text-violet-800 transition-colors hover:bg-violet-100 dark:border-violet-800/40 dark:bg-violet-900/20 dark:text-violet-200 dark:hover:bg-violet-900/40"
+    >
+      <FontAwesomeIcon icon="gear" class="mt-0.5 flex-shrink-0" />
+      <div class="flex-1">
+        <p class="font-semibold">{{ t('aiRecommendation.inflationCtaTitle') }}</p>
+        <p class="mt-0.5 text-xs text-violet-700/80 dark:text-violet-300/80">
+          {{ t('aiRecommendation.inflationCtaBody') }}
+        </p>
+      </div>
+      <span class="hidden flex-shrink-0 items-center gap-1 self-center text-xs font-semibold uppercase tracking-wider sm:inline-flex">
+        {{ t('aiRecommendation.inflationCtaLink') }}
+        <FontAwesomeIcon icon="arrow-right" class="text-[10px]" />
+      </span>
+    </RouterLink>
+
     <!-- Loading -->
     <div v-if="store.isLoading" class="mx-auto max-w-5xl space-y-16">
       <div class="animate-pulse overflow-hidden rounded-3xl bg-gray-900">
@@ -178,6 +296,15 @@ const statusConfig: Record<CompanyStatus, { label: string; dot: string; text: st
               <span>{{ t('aiRecommendation.pickOfTheWeek') }}</span>
               <span>·</span>
               <span>{{ t('aiRecommendation.rankNumber', { rank: hero.rank }) }}</span>
+              <span
+                v-if="hero.qualifyingTier"
+                class="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold normal-case tracking-normal"
+                :class="tierConfig[hero.qualifyingTier].pill"
+                :title="t(tierConfig[hero.qualifyingTier].desc)"
+              >
+                <FontAwesomeIcon icon="shield-halved" class="text-[9px]" />
+                {{ t(tierConfig[hero.qualifyingTier].label) }}
+              </span>
               <span class="ml-auto flex items-center gap-1.5">
                 <span class="h-1.5 w-1.5 rounded-full" :class="statusConfig[hero.status].dot"></span>
                 <span>{{ t(statusConfig[hero.status].label) }}</span>
@@ -213,13 +340,24 @@ const statusConfig: Record<CompanyStatus, { label: string; dot: string; text: st
           <!-- Right: metrics column -->
           <div class="flex flex-col justify-between gap-6 border-t border-white/10 bg-gradient-to-br from-violet-600 to-violet-900 p-8 sm:p-10 md:col-span-2 md:border-l md:border-t-0">
             <div>
-              <div class="text-xs uppercase tracking-widest text-violet-200">{{ t('aiRecommendation.yieldLabel') }}</div>
+              <div class="text-xs uppercase tracking-widest text-violet-200" :title="t('aiRecommendation.yieldLabel')">
+                {{ t('aiRecommendation.yieldLabel') }}
+              </div>
               <div class="mt-1 flex items-baseline gap-2">
                 <div class="text-6xl font-bold tracking-tight sm:text-7xl">{{ hero.dividendYield.toFixed(1) }}</div>
                 <div class="text-3xl font-semibold text-violet-200">%</div>
               </div>
-              <div class="mt-1 text-sm text-violet-200">
+              <div class="mt-1 text-xs text-violet-200">
                 {{ formatPrice(hero.annualDividend, hero.currency) }}/yr · {{ formatPrice(hero.currentPrice, hero.currency) }}
+              </div>
+              <div
+                v-if="showInflationBadge && inflationBeat(hero)"
+                class="mt-3 inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-semibold"
+                :class="beatPalette[inflationBeat(hero)!.verdict].pill"
+                :title="beatTooltip(inflationBeat(hero)!)"
+              >
+                <FontAwesomeIcon :icon="beatPalette[inflationBeat(hero)!.verdict].icon" class="text-[9px]" />
+                {{ beatShortText(inflationBeat(hero)!) }}
               </div>
             </div>
 
@@ -272,6 +410,34 @@ const statusConfig: Record<CompanyStatus, { label: string; dot: string; text: st
         </div>
       </RouterLink>
 
+      <!-- STRATEGY TIER LEGEND -->
+      <section
+        class="mx-auto mb-12 max-w-5xl rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 dark:border-gray-800 dark:bg-gray-900"
+      >
+        <h3 class="mb-2 text-xs font-semibold uppercase tracking-widest text-gray-500 dark:text-gray-400">
+          {{ t('aiRecommendation.tierLegendTitle') }}
+        </h3>
+        <p class="mb-5 text-sm text-gray-600 dark:text-gray-400">
+          {{ t('aiRecommendation.tierLegendBody') }}
+        </p>
+        <div class="grid gap-3 sm:grid-cols-3">
+          <div
+            v-for="tierKey in (['conservative','moderate','permissive'] as const)"
+            :key="tierKey"
+            class="rounded-xl border p-4"
+            :class="tierConfig[tierKey].pill"
+          >
+            <div class="mb-2 flex items-center gap-2 text-xs font-semibold uppercase tracking-widest">
+              <FontAwesomeIcon icon="shield-halved" :class="tierConfig[tierKey].iconColor" />
+              <span>{{ t(tierConfig[tierKey].label) }}</span>
+            </div>
+            <p class="text-xs leading-relaxed">
+              {{ t(tierConfig[tierKey].desc) }}
+            </p>
+          </div>
+        </div>
+      </section>
+
       <!-- ABOUT THESE PICKS — methodology, not-financial-advice, conflicts -->
       <section
         class="mx-auto mb-16 max-w-5xl rounded-2xl border border-gray-200 bg-white p-6 sm:p-8 dark:border-gray-800 dark:bg-gray-900"
@@ -322,6 +488,15 @@ const statusConfig: Record<CompanyStatus, { label: string; dot: string; text: st
               <span class="h-1.5 w-1.5 rounded-full" :class="statusConfig[p.status].dot"></span>
               <span :class="statusConfig[p.status].text">{{ t(statusConfig[p.status].label) }}</span>
               <span class="text-gray-400">· {{ t('aiRecommendation.rankNumber', { rank: p.rank }) }}</span>
+              <span
+                v-if="p.qualifyingTier"
+                class="inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold normal-case tracking-normal"
+                :class="tierConfig[p.qualifyingTier].pill"
+                :title="t(tierConfig[p.qualifyingTier].desc)"
+              >
+                <FontAwesomeIcon icon="shield-halved" class="text-[8px]" />
+                {{ t(tierConfig[p.qualifyingTier].label) }}
+              </span>
               <FontAwesomeIcon
                 icon="arrow-right"
                 class="ml-auto text-[10px] text-gray-300 transition-transform group-hover:translate-x-0.5 group-hover:text-violet-500 dark:text-gray-600"
@@ -345,9 +520,25 @@ const statusConfig: Record<CompanyStatus, { label: string; dot: string; text: st
             <div class="mt-5 border-t border-gray-100 pt-4 dark:border-gray-800">
               <div class="flex items-end justify-between gap-4">
                 <div>
-                  <div class="text-[10px] uppercase tracking-wider text-gray-400">{{ t('aiRecommendation.yieldLabel') }}</div>
-                  <div class="text-2xl font-bold tabular-nums text-gray-900 sm:text-3xl dark:text-white">
+                  <div class="text-[10px] uppercase tracking-wider text-gray-400">
+                    {{ t('aiRecommendation.yieldLabel') }}
+                  </div>
+                  <div
+                    class="text-2xl font-bold tabular-nums text-gray-900 sm:text-3xl dark:text-white"
+                    :title="
+                      showInflationBadge && inflationBeat(p) ? beatTooltip(inflationBeat(p)!) : ''
+                    "
+                  >
                     {{ p.dividendYield.toFixed(1) }}<span class="text-base text-gray-400">%</span>
+                  </div>
+                  <div
+                    v-if="showInflationBadge && inflationBeat(p)"
+                    class="mt-1.5 inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-semibold"
+                    :class="beatPalette[inflationBeat(p)!.verdict].pill"
+                    :title="beatTooltip(inflationBeat(p)!)"
+                  >
+                    <FontAwesomeIcon :icon="beatPalette[inflationBeat(p)!.verdict].icon" class="text-[8px]" />
+                    {{ beatShortText(inflationBeat(p)!) }}
                   </div>
                 </div>
 

@@ -95,28 +95,31 @@ Daily AI-curated list of the top 10 European dividend stocks for long-term incom
 2. **Candidate pool** = curated EU dividend spine (`scripts/eu-dividend-universe.mjs`, ~55 large-caps) + Gemini-suggested watch list (~10 names not on the spine).
 3. **Yahoo Finance** (`yahoo-finance2` npm) enriches each candidate with quote, profile, `financialData` (TTM payout ratio, ROE, debt, EBITDA, FCF, revenue), and 5-year dividend history. FMP `/stable/profile` is a per-ticker fallback if Yahoo fails.
 4. **Quality metrics** are computed: payout ratio, debt/EBITDA, FCF coverage, ROE, dividend streak (consecutive years without > 30% cut), 5-year dividend CAGR.
-5. **Cascading hard filter** — Conservative → Moderate → Permissive. The strictest tier that yields ≥ 10 survivors is used. Sector-aware: banks/insurers skip the debt/EBITDA gate; utilities/REITs get a higher payout cap.
+5. **Tier labelling, not tier gating** — every candidate is tagged with the strictest tier it passes (`Conservative` → `Moderate` → `Permissive`). Anything that fails even Permissive (negative ROE, payout > 150%, debt/EBITDA > 7) is dropped. Sector-aware: banks/insurers skip the debt/EBITDA gate; utilities/REITs get a higher payout cap. The picked batch is therefore *mixed* — the UI shows each pick's own tier badge so users can tell a Conservative pick from a Permissive one at a glance.
 6. **Composite Quality Score (0–10)** weighted: sustainability 40% / growth 30% / profitability 20% / yield 10%.
-7. **Diversification caps** — max 3 per sector, max 3 per country. Greedy by score.
+7. **Diversification caps + yield gate** — selection narrows on yield (start 2× ECB, relax in steps if needed) and diversification (start 3 per sector / 3 per country, relax if needed) until the target of 10 is filled.
 8. **Narratives** — Gemini writes one sentence each for `pro` / `con` / `status` *per pick*, with the actual computed metrics fed in as context (no generic platitudes).
-9. The result is written to Firestore: `ai-recommendations/latest` (read by the page) **and** `ai-recommendations/<YYYY-MM-DD>` (audit-trail snapshot, kept indefinitely). The doc includes the qualityTier used, candidate counts at each stage, and sector/country distribution.
+9. The result is written to Firestore: `ai-recommendations/latest` (read by the page) **and** `ai-recommendations/<YYYY-MM-DD>` (audit-trail snapshot, kept indefinitely). The doc includes per-pick `qualifyingTier`, the batch `tierDistribution`, candidate counts at each stage, and sector/country distribution.
 10. When a user visits the page, the app reads `ai-recommendations/latest`. If Firestore is unreachable, falls back to localStorage. **There is no runtime Gemini fallback** — fabricated financial figures are never shown to the user.
 
 **Magazine-style list (`/ai-recommendation`):**
 
 - Editorial header with kicker pill and serif headline ("High-yield Europe, curated.")
-- **Hero "Pick of the week"** — a dark card for rank #1 with a violet gradient metrics column containing the oversized yield number, the full 5-year yield bar chart with year labels, market cap, and 1-day price change. Left column is the serif company headline, localised thesis paragraph, and a pull-quote blockquote built from the localised con
-- **"Also in the ranking"** — a 2-column clickable-card grid for ranks 2–10 with status dot, serif company name, ticker/country/sector meta, a 2-line thesis, the current yield and a compact 5-year yield bar chart with year labels
+- **Hero "Pick of the week"** — a dark card for rank #1 with a violet gradient metrics column containing the oversized **nominal yield**, the full 5-year yield bar chart with year labels, market cap, and 1-day price change. Left column is the serif company headline, localised thesis paragraph, and a pull-quote blockquote built from the localised con. The kicker line carries the pick's own **strategy tier badge** (Conservative / Moderate / Permissive). When the logged-in user has a tax country set, the metrics column also shows a **"Beats / Matches / Loses your inflation" pill**.
+- **"Also in the ranking"** — a 2-column clickable-card grid for ranks 2–10 with status dot, tier badge, serif company name, ticker/country/sector meta, a 2-line thesis, the current nominal yield with the inflation-beat pill underneath (when applicable), and a compact 5-year yield bar chart with year labels
+- **Strategy tier legend** — a 3-card explainer block defining what Conservative / Moderate / Permissive mean, so users understand the per-pick badge
+- **Tax-country CTA** — for logged-in users who haven't set a tax country, a soft prompt under the compliance band linking to Settings ("see how each pick beats your inflation")
 - Every card (hero + ranking) is a link to the company detail page
 
 **Company detail page (`/ai-recommendation/:ticker`):**
 
 - Back link to the picks list
-- Company header with logo, rank, status badge, ticker, country flag, sector, exchange
-- Key metrics grid: yield, price + 1-day change, annual dividend, market cap
+- Company header with logo, rank, status badge, **strategy tier badge**, ticker, country flag, sector, exchange
+- **Inflation-beat block** (logged in + tax country set) — coloured banner showing "Beats your inflation by X%" / "Roughly matches" / "Loses by X%" with the underlying math `nominal − userHICP` and the HICP date
+- Key metrics grid: nominal yield (violet primary), price + 1-day change, annual dividend, market cap
 - **Yield & dividend evolution line chart** — dual-axis Chart.js line (yield % on left, dividend per share on right) over the last 5 years
 - 5-year yield bar chart with year labels
-- Dividends-per-year table with total amount and payment frequency
+- Dividends-per-year table with total amount, payment frequency, and **the exact payout dates** for every dividend in the 5-year window — so a 4×/yr payer shows the four dates that year
 - Pro / Con cards — localised to the user's language
 
 Phase 2 data (per-company 5-year history) is fetched in parallel from Gemini after the initial list loads, so sparklines and charts fade in progressively.
@@ -182,6 +185,10 @@ src/
 │   ├── inflation/
 │   ├── dividends/
 │   ├── ai-recommendation/
+│   ├── auth/           # Firebase Auth + per-user profile (taxCountryCode)
+│   ├── follow/
+│   ├── settings/       # /settings page — EU-27 tax-country picker
+│   ├── minerals/
 │   └── theme/
 ├── i18n/               # vue-i18n instance + locale files
 ├── plugins/            # Firebase, FontAwesome
@@ -294,6 +301,14 @@ match /ai-recommendations/{doc} {
 }
 ```
 
+The `users/{uid}` collection is owner-only — used by both `follow/` (for tracked tickers) and `settings/` (for `taxCountryCode`):
+
+```
+match /users/{uid} {
+  allow read, write: if request.auth.uid == uid;
+}
+```
+
 ---
 
 ## AI Recommendations — Roadmap / TODO
@@ -333,7 +348,11 @@ The current screen is `dividendYield > 2× ECB`. High yield + large cap is one o
 - [x] Composite Quality Score (0–10) — weighted: sustainability 40% / growth 30% / profitability 20% / yield 10%
 - [x] Curated EU dividend universe (`scripts/eu-dividend-universe.mjs`) — ~55 large-caps as the spine, augmented by ~10 Gemini "watch list" candidates per run
 - [x] Metric-aware narratives — Gemini sees the actual numbers when writing pro/con per pick (no more generic platitudes)
-- [ ] Change the design to keep it clear the different strategies for each pick, we have CONSERVATIVE, MODERATE and PERMISSIVE. lets display for the user this differences too.
+- [x] Per-pick strategy tier badges (Conservative / Moderate / Permissive) on both the list and the detail page, plus a legend block on the list that defines each tier
+- [x] Fix `dividendStreak` off-by-one — the loop walked transitions only, capping streak at 4 and making the Conservative tier (`minStreak=5`) mathematically impossible. Streak now includes the starting year, so a 5-year stable payer scores 5
+- [x] Decouple tier from selection — every pick is *labelled* with its strictest passing tier; selection narrows on yield-gate × diversification caps until 10 are filled, so the batch is a healthy mix of tiers (e.g. 4 Conservative / 1 Moderate / 5 Permissive) instead of falling through to a single tier wholesale
+- [x] Loosen Permissive thresholds for European reality — TTM payout > 100% is common for EU names in transition years and tells you little about future cuts; Permissive now allows payout ≤ 150% (175% for utilities/REITs), debt/EBITDA ≤ 7, ROE ≥ −5%
+- [x] Capture exact dividend payment dates per year (`payouts: [{date, amount}]`) so the detail page can show every payout date — useful for income-investor cash-flow planning
 - [ ] 90-day earnings-revision direction — skipped, not freely available from Yahoo
 - [ ] Forward P/E vs sector median — skipped, sector medians not available cheaply
 - [ ] Monthly review of `eu-dividend-universe.mjs` — manual maintenance task; remove names that have cut dividends or had quality deterioration
@@ -342,19 +361,33 @@ The current screen is `dividendYield > 2× ECB`. High yield + large cap is one o
 
 `winflation.eu` exists to compare yield against inflation. The AI picks page never shows it.
 
-- [ ] Display the country's HICP inflation rate next to each pick
-- [ ] Compute and surface real yield (nominal yield − inflation) — make this the headline number
-- [ ] Reuse the inflation data already loaded by the inflation module (no new API call needed)
+- [x] Headline stays nominal yield — neutral, currency-independent, true regardless of who's reading. The personalised inflation comparison is contextual, not a substitution. **Initial implementation used issuer-country HICP, which was wrong from an investor perspective (a Brazilian holding ENEL.MI doesn't pay rent in Italy) — replaced with user's tax-residence HICP.**
+- [x] Per-pick "Beats / Matches / Loses your inflation" badge — green / amber / red, with the magnitude (`Beats by 2.4%`). Computed as `nominal yield − userHICP`, rounded to 1 decimal. Sharp threshold at 0 (any positive → Beats; exact 0 → Matches; negative → Loses).
+- [x] Logged-out users (and logged-in users without a tax country set) see only nominal yield — no badge.
+- [x] Logged-in users with a tax country see the badge on the hero card, every ranking card, and a prominent block on the detail page. A soft-prompt CTA invites logged-in users without a country to open Settings.
+- [x] **Settings page** (`/settings`, requiresAuth) with EU-27 country picker — placeholder/tooltip says *"Country where you declare taxes"* so the framing is unambiguous.
+- [x] User profile (`taxCountryCode`) persisted in Firestore under `users/{uid}` so it survives sessions. Same doc the `follow/` module already writes to (separate fields, both modules use `{merge: true}` so they don't collide). Required Firestore rule: `match /users/{uid} { allow read, write: if request.auth.uid == uid; }`
+- [x] Reuse the inflation data already loaded by the inflation module (no new API call needed) — the AI views call `useInflationStore().init()`, which is idempotent and already cached.
+
+**Known gaps (deferred):**
+
+- The badge ignores **FX risk** — a pt-BR user holding ENEL.MI receives EUR dividends that get converted to BRL; BRL/EUR moves can swamp the inflation adjustment. Folded into the P3 FX item below.
+- The badge ignores **withholding tax** — a Brazilian receiving Swiss dividends pays ~35% Swiss WHT pre-treaty; the gross-of-WHT real yield is misleading for them. Folded into the P3 WHT item below.
+- Only EU-27 tax countries are supported — that's where Eurostat HICP coverage exists. Adding non-EU residents (UK, CH, NO, BR, US, …) means wiring per-country inflation series.
+- Per-stock badge only — there is no portfolio-level "you're beating inflation by X% across your holdings" view. Captured below.
 
 ### P3 — Methodology gaps a real advisor would catch
 
-- [ ] Surface withholding-tax impact (varies 0% UK → 35% CH pre-treaty); show net yield after WHT
-- [ ] Flag FX risk for non-EUR currencies (NOK, SEK, DKK, GBP, CHF) — relevant for pt-BR users with EUR exposure too
+- [x] **WHT v1 — education hub.** Settings page now hosts a per-source-country withholding table for the user's tax residence. 30 source countries (EU-27 + US, UK, CH), statutory rate + bilateral treaty cap with paperwork, "Applied at source" vs "Reclaim required" badge, one-line reclaim mechanics, search filter, "Reviewed YYYY-MM-DD" stamp, and a top disclaimer banner. Data is hand-curated in `src/modules/settings/domain/withholding-rates.ts`.
+- [ ] **WHT v2 — fold into picks pages and the "Beats your inflation" badge.** Once v1 has settled, surface the user-specific WHT on the AI Picks list (a small chip on each pick: "−12% WHT to reclaim" or "−15% applied at source") and fold the post-WHT yield into the inflation-beat badge math. The current gross-of-WHT comparison overstates clear-to-account income for high-WHT chains (CH→PT, FR→PT, etc).
+- [ ] Flag and price in **FX risk** for non-EUR currencies (NOK, SEK, DKK, GBP, CHF) — and for non-EUR-resident users (e.g. pt-BR users with EUR exposure). The current "Beats your inflation" badge subtracts user HICP from EUR-quoted yield, ignoring BRL/EUR drift; for cross-currency holdings the FX leg often dwarfs the inflation adjustment. Either fold FX into the badge math or label it explicitly *"in pick currency, before FX"*
+- [ ] Support non-EU-27 tax residences in Settings (UK, CH, NO at minimum, ideally global) — needs a per-country inflation series beyond Eurostat HICP (e.g. ONS for UK, BFS for CH, BCB/IBGE for BR, BLS for US)
 - [ ] Define a clear time window for `priceChangePercent` (currently ambiguous — vs. yesterday? YTD? 1y?)
 - [ ] Add total-return view (yield + price action), not yield-only ranking
 - [ ] Add ex-dividend date and next-payment date
 - [ ] Define an explicit rubric for `status` (bullish/neutral/bearish) instead of letting the model decide ad-hoc
 - [ ] Replace single-sentence `pro`/`con` with a structured thesis paragraph
+- [ ] Portfolio-level "Beats your inflation" — once the `follow/` module gains cost basis + share counts, compute a portfolio-weighted real yield and headline it on `/followed`. Today's badge is per-stock-hypothetical, not "your money."
 
 ### P3 — Pipeline & operational
 

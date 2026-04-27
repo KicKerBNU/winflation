@@ -26,6 +26,11 @@ async function logout() {
   router.push('/')
 }
 
+function goSettings() {
+  close()
+  router.push('/settings')
+}
+
 function goLogin() {
   router.push({ path: '/login', query: { redirect: route.fullPath } })
 }
@@ -80,6 +85,14 @@ onBeforeUnmount(() => document.removeEventListener('click', onDocClick))
       <button
         type="button"
         class="flex w-full cursor-pointer items-center gap-2 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+        @click="goSettings"
+      >
+        <FontAwesomeIcon icon="gear" class="text-xs" />
+        {{ t('auth.menu.settings') }}
+      </button>
+      <button
+        type="button"
+        class="flex w-full cursor-pointer items-center gap-2 border-t border-gray-100 px-4 py-2.5 text-left text-sm text-gray-700 transition-colors hover:bg-gray-100 dark:border-gray-700 dark:text-gray-200 dark:hover:bg-gray-700"
         @click="logout"
       >
         <FontAwesomeIcon icon="right-from-bracket" class="text-xs" />

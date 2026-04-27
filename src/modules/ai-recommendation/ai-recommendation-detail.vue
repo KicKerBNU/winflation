@@ -4,9 +4,12 @@ import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Chart, registerables } from 'chart.js'
 import { useAiRecommendationStore } from './store/ai-recommendation.store'
+import { useInflationStore } from '@/modules/inflation/store/inflation.store'
+import { useAuthStore } from '@/modules/auth/store/auth.store'
+import { useUserProfileStore } from '@/modules/auth/store/user-profile.store'
 import { useThemeStore } from '@/modules/theme/store/theme.store'
 import FollowButton from '@/modules/follow/components/FollowButton.vue'
-import type { AiCompanyCard, CompanyStatus, LocalizedText, YearlyYield } from './domain/ai-recommendation.types'
+import type { AiCompanyCard, CompanyStatus, LocalizedText, YearlyYield, QualityTier } from './domain/ai-recommendation.types'
 
 Chart.register(...registerables)
 
@@ -14,6 +17,9 @@ const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
 const store = useAiRecommendationStore()
+const inflationStore = useInflationStore()
+const authStore = useAuthStore()
+const profileStore = useUserProfileStore()
 const themeStore = useThemeStore()
 
 const SERIF = "ui-serif, Georgia, 'Times New Roman', serif"
@@ -27,7 +33,66 @@ const notFound = computed(() => !store.isLoading && store.hasData && !company.va
 
 onMounted(() => {
   store.init()
+  inflationStore.init()
 })
+
+type BeatVerdict = 'beats' | 'matches' | 'loses'
+
+const userInflation = computed(() => {
+  const code = profileStore.taxCountryCode
+  if (!code) return null
+  return inflationStore.countries.find((c) => c.countryCode === code) ?? null
+})
+
+const showInflationBlock = computed(
+  () => authStore.isAuthenticated && profileStore.hasTaxCountry && userInflation.value !== null,
+)
+
+const showInflationCta = computed(
+  () => authStore.isAuthenticated && !profileStore.hasTaxCountry && profileStore.isLoaded,
+)
+
+const inflationBeat = computed(() => {
+  if (!company.value || !userInflation.value) return null
+  const diff = +(company.value.dividendYield - userInflation.value.rate).toFixed(1)
+  const verdict: BeatVerdict = diff > 0 ? 'beats' : diff < 0 ? 'loses' : 'matches'
+  return {
+    verdict,
+    amount: Math.abs(diff),
+    nominal: company.value.dividendYield,
+    inflation: userInflation.value.rate,
+    countryName: userInflation.value.country,
+    countryCode: userInflation.value.countryCode,
+    asOf: userInflation.value.date,
+  }
+})
+
+const beatPalette: Record<BeatVerdict, { card: string; iconColor: string; icon: string; valueColor: string }> = {
+  beats: {
+    card: 'border-emerald-200 bg-emerald-50 dark:border-emerald-800/40 dark:bg-emerald-900/20',
+    iconColor: 'text-emerald-600 dark:text-emerald-400',
+    icon: 'arrow-trend-up',
+    valueColor: 'text-emerald-700 dark:text-emerald-300',
+  },
+  matches: {
+    card: 'border-amber-200 bg-amber-50 dark:border-amber-800/40 dark:bg-amber-900/20',
+    iconColor: 'text-amber-600 dark:text-amber-400',
+    icon: 'minus',
+    valueColor: 'text-amber-700 dark:text-amber-300',
+  },
+  loses: {
+    card: 'border-red-200 bg-red-50 dark:border-red-800/40 dark:bg-red-900/20',
+    iconColor: 'text-red-600 dark:text-red-400',
+    icon: 'arrow-trend-down',
+    valueColor: 'text-red-700 dark:text-red-300',
+  },
+}
+
+function beatLongText(b: NonNullable<typeof inflationBeat.value>): string {
+  if (b.verdict === 'beats') return t('aiRecommendation.inflationBeatBeats', { amount: b.amount.toFixed(1) })
+  if (b.verdict === 'loses') return t('aiRecommendation.inflationBeatLoses', { amount: b.amount.toFixed(1) })
+  return t('aiRecommendation.inflationBeatMatches')
+}
 
 function countryFlag(code: string): string {
   return code
@@ -39,6 +104,12 @@ function countryFlag(code: string): string {
 
 function formatPrice(amount: number, currency: string): string {
   return new Intl.NumberFormat(undefined, { style: 'currency', currency, minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount)
+}
+
+function formatPayoutDate(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleDateString(locale.value, { day: '2-digit', month: 'short', year: 'numeric' })
 }
 
 /** Chart.js tick values can carry float noise (e.g. 1.8000000000000003); cap at 2 decimal places for display. */
@@ -78,6 +149,24 @@ function yieldAxisMax(yields: number[]): number {
   const maxYieldValue = Math.max(...yields, 0)
   // Keep chart scale stable for comparison, but allow headroom above unusual outliers.
   return Math.max(15, Math.ceil((maxYieldValue + 0.5) * 2) / 2)
+}
+
+const tierConfig: Record<QualityTier, { label: string; desc: string; pill: string }> = {
+  conservative: {
+    label: 'aiRecommendation.tierConservative',
+    desc: 'aiRecommendation.tierConservativeDesc',
+    pill: 'border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-800/40 dark:bg-sky-900/30 dark:text-sky-300',
+  },
+  moderate: {
+    label: 'aiRecommendation.tierModerate',
+    desc: 'aiRecommendation.tierModerateDesc',
+    pill: 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800/40 dark:bg-indigo-900/30 dark:text-indigo-300',
+  },
+  permissive: {
+    label: 'aiRecommendation.tierPermissive',
+    desc: 'aiRecommendation.tierPermissiveDesc',
+    pill: 'border-orange-200 bg-orange-50 text-orange-700 dark:border-orange-800/40 dark:bg-orange-900/30 dark:text-orange-300',
+  },
 }
 
 const statusConfig: Record<CompanyStatus, { label: string; dot: string; bg: string; text: string; icon: string }> = {
@@ -301,6 +390,15 @@ watch(() => themeStore.isDark, () => {
               <FontAwesomeIcon :icon="statusConfig[company.status].icon" class="text-[9px]" />
               {{ t(statusConfig[company.status].label) }}
             </span>
+            <span
+              v-if="company.qualifyingTier"
+              class="flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold normal-case tracking-normal"
+              :class="tierConfig[company.qualifyingTier].pill"
+              :title="t(tierConfig[company.qualifyingTier].desc)"
+            >
+              <FontAwesomeIcon icon="shield-halved" class="text-[9px]" />
+              {{ t(tierConfig[company.qualifyingTier].label) }}
+            </span>
           </div>
           <h1 class="text-2xl font-bold text-gray-900 sm:text-3xl dark:text-white" :style="{ fontFamily: SERIF }">
             {{ company.company }}
@@ -325,6 +423,59 @@ watch(() => themeStore.isDark, () => {
           source="ai-pick"
         />
       </div>
+
+      <!-- Inflation-beat block (logged in + tax country set) -->
+      <div
+        v-if="showInflationBlock && inflationBeat"
+        class="mb-6 flex flex-wrap items-center gap-3 rounded-2xl border p-4 text-sm"
+        :class="beatPalette[inflationBeat.verdict].card"
+      >
+        <div
+          class="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-white/60 dark:bg-black/30"
+        >
+          <FontAwesomeIcon
+            :icon="beatPalette[inflationBeat.verdict].icon"
+            :class="beatPalette[inflationBeat.verdict].iconColor"
+          />
+        </div>
+        <div class="flex-1 min-w-0">
+          <p class="text-xs font-semibold uppercase tracking-widest" :class="beatPalette[inflationBeat.verdict].iconColor">
+            {{ t('aiRecommendation.inflationBeatTitle') }}
+          </p>
+          <p class="mt-0.5 text-base font-bold leading-tight" :class="beatPalette[inflationBeat.verdict].valueColor">
+            {{ beatLongText(inflationBeat) }}
+          </p>
+          <p class="mt-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+            {{
+              t('aiRecommendation.inflationBeatHint', {
+                nominal: inflationBeat.nominal.toFixed(2),
+                inflation: inflationBeat.inflation.toFixed(2),
+                country: inflationBeat.countryName,
+              })
+            }}
+            · {{ t('aiRecommendation.hicpAsOf', { date: inflationBeat.asOf }) }}
+          </p>
+        </div>
+      </div>
+
+      <!-- Tax-country CTA (logged in, no country set) -->
+      <RouterLink
+        v-else-if="showInflationCta"
+        to="/settings"
+        class="mb-6 flex cursor-pointer items-start gap-3 rounded-2xl border border-violet-200 bg-violet-50 p-4 text-sm text-violet-800 transition-colors hover:bg-violet-100 dark:border-violet-800/40 dark:bg-violet-900/20 dark:text-violet-200 dark:hover:bg-violet-900/40"
+      >
+        <FontAwesomeIcon icon="gear" class="mt-0.5 flex-shrink-0" />
+        <div class="flex-1">
+          <p class="font-semibold">{{ t('aiRecommendation.inflationCtaTitle') }}</p>
+          <p class="mt-0.5 text-xs text-violet-700/80 dark:text-violet-300/80">
+            {{ t('aiRecommendation.inflationCtaBody') }}
+          </p>
+        </div>
+        <span class="hidden flex-shrink-0 items-center gap-1 self-center text-xs font-semibold uppercase tracking-wider sm:inline-flex">
+          {{ t('aiRecommendation.inflationCtaLink') }}
+          <FontAwesomeIcon icon="arrow-right" class="text-[10px]" />
+        </span>
+      </RouterLink>
 
       <!-- Key metrics -->
       <div class="mb-8 grid grid-cols-2 gap-3 sm:grid-cols-4">
@@ -416,25 +567,38 @@ watch(() => themeStore.isDark, () => {
               <div class="h-4 w-24 rounded bg-gray-200 dark:bg-gray-700" />
             </div>
           </div>
-          <div v-else class="space-y-2">
+          <div v-else class="space-y-2.5">
             <div
               v-for="d in [...company.dividendsPerYear].reverse()"
               :key="d.year"
-              class="flex items-center justify-between border-b border-gray-200 py-1.5 text-sm last:border-b-0 dark:border-gray-700"
+              class="border-b border-gray-200 pb-2 last:border-b-0 dark:border-gray-700"
             >
-              <span class="font-medium text-gray-600 dark:text-gray-300">{{ d.year }}</span>
-              <div class="flex items-center gap-3">
-                <span class="font-bold text-gray-900 dark:text-white">
-                  {{ formatPrice(d.totalAmount, company.currency) }}
-                </span>
+              <div class="flex items-center justify-between text-sm">
+                <span class="font-medium text-gray-600 dark:text-gray-300">{{ d.year }}</span>
+                <div class="flex items-center gap-3">
+                  <span class="font-bold text-gray-900 dark:text-white">
+                    {{ formatPrice(d.totalAmount, company.currency) }}
+                  </span>
+                  <span
+                    v-if="yieldForYear(d.year) !== null"
+                    class="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-700 dark:border-violet-800/40 dark:bg-violet-900/20 dark:text-violet-300"
+                  >
+                    {{ t('aiRecommendation.yearlyYieldLabel', { yield: yieldForYear(d.year)!.toFixed(1) }) }}
+                  </span>
+                  <span class="rounded-full border border-gray-300 px-2 py-0.5 text-xs text-gray-500 dark:border-gray-600 dark:text-gray-400">
+                    {{ d.payments }}x
+                  </span>
+                </div>
+              </div>
+              <div v-if="d.payouts && d.payouts.length" class="mt-1.5 flex flex-wrap gap-1.5">
                 <span
-                  v-if="yieldForYear(d.year) !== null"
-                  class="rounded-full border border-violet-200 bg-violet-50 px-2 py-0.5 text-xs font-semibold text-violet-700 dark:border-violet-800/40 dark:bg-violet-900/20 dark:text-violet-300"
+                  v-for="po in d.payouts"
+                  :key="po.date"
+                  class="inline-flex items-center gap-1 rounded-md border border-gray-200 bg-white px-1.5 py-0.5 text-[10px] text-gray-500 dark:border-gray-700 dark:bg-gray-900 dark:text-gray-400"
+                  :title="formatPrice(po.amount, company.currency)"
                 >
-                  {{ t('aiRecommendation.yearlyYieldLabel', { yield: yieldForYear(d.year)!.toFixed(1) }) }}
-                </span>
-                <span class="rounded-full border border-gray-300 px-2 py-0.5 text-xs text-gray-500 dark:border-gray-600 dark:text-gray-400">
-                  {{ d.payments }}x
+                  <FontAwesomeIcon icon="calendar" class="text-[8px] text-gray-400" />
+                  {{ formatPayoutDate(po.date) }}
                 </span>
               </div>
             </div>

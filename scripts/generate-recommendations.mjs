@@ -188,11 +188,13 @@ async function fetchYahooHistory(ticker) {
       : Object.values(events?.dividends ?? {})
     for (const ev of dividendList) {
       const ts = typeof ev.date === 'number' ? ev.date * 1000 : new Date(ev.date).getTime()
+      const dateStr = new Date(ts).toISOString().slice(0, 10)
       const year = new Date(ts).getUTCFullYear()
       if (year < firstYear || year > lastCompleteYear) continue
-      const e = divsByYear.get(year) ?? { totalAmount: 0, payments: 0 }
+      const e = divsByYear.get(year) ?? { totalAmount: 0, payments: 0, payouts: [] }
       e.totalAmount += ev.amount ?? 0
       e.payments += 1
+      e.payouts.push({ date: dateStr, amount: +(ev.amount ?? 0).toFixed(4) })
       divsByYear.set(year, e)
     }
     const yearEndClose = new Map()
@@ -207,8 +209,16 @@ async function fetchYahooHistory(ticker) {
       return { year: y, yield: yieldPct, dividend: +div.toFixed(3) }
     })
     const dividendsPerYear = targetYears.map((y) => {
-      const e = divsByYear.get(y) ?? { totalAmount: 0, payments: 0 }
-      return { year: y, totalAmount: +e.totalAmount.toFixed(3), payments: e.payments }
+      const e = divsByYear.get(y) ?? { totalAmount: 0, payments: 0, payouts: [] }
+      const payouts = (e.payouts ?? [])
+        .slice()
+        .sort((a, b) => a.date.localeCompare(b.date))
+      return {
+        year: y,
+        totalAmount: +e.totalAmount.toFixed(3),
+        payments: e.payments,
+        payouts,
+      }
     })
     return { historicYields, dividendsPerYear }
   } catch (err) {
@@ -267,17 +277,20 @@ function isUtilityOrReit(sector) {
 }
 
 function computeMetrics(quote, history) {
-  // dividend streak: count consecutive years (most recent backwards) where
-  // total dividend did not drop more than 30% vs. previous year.
+  // dividend streak: count consecutive most-recent years where the dividend was
+  // paid AND was not cut > 30% vs. the previous year. Walks backwards from the
+  // last complete year and includes the starting year if it had a positive
+  // dividend, so a 5-year stable payer scores 5 (not 4).
   const yearly = (history?.dividendsPerYear ?? []).map((d) => d.totalAmount)
   let streak = 0
-  for (let i = yearly.length - 1; i >= 1; i--) {
+  for (let i = yearly.length - 1; i >= 0; i--) {
     const cur = yearly[i]
-    const prev = yearly[i - 1]
     if (cur <= 0) break
-    if (prev > 0 && cur >= prev * 0.7) streak++
-    else if (prev > 0) break
-    else if (cur > 0) streak++  // prev was zero, current paid → counts
+    if (i === 0) { streak++; break }
+    const prev = yearly[i - 1]
+    if (prev <= 0) { streak++; break }  // bridge from a no-dividend year
+    if (cur >= prev * 0.7) streak++
+    else break  // dividend cut > 30% → streak ends
   }
   // 5y dividend CAGR — first non-zero to last non-zero
   let cagr = null
@@ -343,14 +356,26 @@ const TIERS = {
   permissive: {
     label: 'Permissive',
     // streak=0 lets through tickers whose Yahoo dividend history has gaps but
-    // the current dividend is real (yield gate already enforces this).
+    // the current dividend is real (yield gate already enforces this). Payout
+    // and ROE caps are loose because TTM payout > 100% is common for European
+    // names in transition years and tells you little about future cuts.
     minStreak: 0,
-    maxPayout: 1.0,
-    maxPayoutDefensive: 1.1,
-    maxDebtEbitda: 5,
-    minRoe: 0,
-    minCagr: -0.1,
+    maxPayout: 1.5,
+    maxPayoutDefensive: 1.75,
+    maxDebtEbitda: 7,
+    minRoe: -0.05,
+    minCagr: -0.15,
   },
+}
+
+const TIER_ORDER = ['conservative', 'moderate', 'permissive']
+
+// Strictest tier this candidate passes, or null if it fails even Permissive.
+function qualifyingTier(quote, metrics) {
+  for (const tier of TIER_ORDER) {
+    if (passesTier(quote, metrics, tier)) return tier
+  }
+  return null
 }
 
 function passesTier(quote, m, tierKey) {
@@ -382,48 +407,44 @@ function passesTier(quote, m, tierKey) {
   return true
 }
 
-// Multi-dimensional fill-to-target.
+// Fill-to-target.
 //
-// We search a 3D grid (tier × yield-gate × diversification-caps), preferring
-// combinations that keep quality high. The first combination that yields ≥
-// target picks wins. If nothing reaches the target, we return the best result
-// we found (with the relaxations recorded so the UI can show what was used).
+// Tier is now a per-pick LABEL (already attached to each candidate), not a
+// gate. Selection narrows on yield-gate × diversification-caps and then takes
+// the top N by composite quality score. Anything that fails even Permissive is
+// already filtered out upstream, so every survivor here is a real dividend
+// payer with sane fundamentals.
 //
-// Search order (outer-to-inner, strictest first):
-//   1. tier:   Conservative → Moderate → Permissive  (outer: keep quality high)
-//   2. caps:   3 → 4 → 5 → unlimited                 (middle: tighten diversity if possible)
-//   3. yield:  2.0× → 1.5× → 1.0× → 0.5× → 0× ECB    (inner: relax yield only as last resort)
+// Search order (strictest first, relax only if we can't fill):
+//   1. caps:   3 → 4 → 5 → unlimited
+//   2. yield:  2.0× → 1.5× → 1.0× → 0.5× → 0× ECB
 function fillToTarget(candidates, ecbRate, target = 10) {
-  const tiers = ['conservative', 'moderate', 'permissive']
   const capLevels = [
     { sector: 3, country: 3 },
     { sector: 4, country: 4 },
     { sector: 5, country: 5 },
-    { sector: 999, country: 999 }, // unlimited
+    { sector: 999, country: 999 },
   ]
   const yieldMults = [2.0, 1.5, 1.0, 0.5, 0]
 
-  let best = { picked: [], tier: 'permissive', yieldMult: 0, caps: capLevels[capLevels.length - 1] }
+  let best = { picked: [], yieldMult: 0, caps: capLevels[capLevels.length - 1] }
 
-  for (const tier of tiers) {
-    for (const caps of capLevels) {
-      for (const yMult of yieldMults) {
-        const minY = ecbRate * yMult
-        const aboveGate = candidates.filter(
-          (c) => typeof c.quote.dividendYield === 'number' && c.quote.dividendYield > minY,
-        )
-        const survivors = aboveGate.filter((c) => passesTier(c.quote, c.metrics, tier))
-        const scored = survivors.map((s) => ({ ...s, ...computeQualityScore(s.quote, s.metrics) }))
-        const { picked } = applyDiversificationCaps(scored, {
-          maxPerSector: caps.sector,
-          maxPerCountry: caps.country,
-          take: target,
-        })
-        if (picked.length > best.picked.length) {
-          best = { picked, tier, yieldMult: yMult, caps }
-        }
-        if (picked.length >= target) return best
+  for (const caps of capLevels) {
+    for (const yMult of yieldMults) {
+      const minY = ecbRate * yMult
+      const aboveGate = candidates.filter(
+        (c) => typeof c.quote.dividendYield === 'number' && c.quote.dividendYield > minY,
+      )
+      const scored = aboveGate.map((s) => ({ ...s, ...computeQualityScore(s.quote, s.metrics) }))
+      const { picked } = applyDiversificationCaps(scored, {
+        maxPerSector: caps.sector,
+        maxPerCountry: caps.country,
+        take: target,
+      })
+      if (picked.length > best.picked.length) {
+        best = { picked, yieldMult: yMult, caps }
       }
+      if (picked.length >= target) return best
     }
   }
   return best
@@ -624,20 +645,37 @@ const enriched = await Promise.all(
 const present = enriched.filter((c) => c !== null)
 console.log(`[${new Date().toISOString()}] Enriched ${present.length}/${candidatePool.length}.`)
 
-// Multi-dimensional fill-to-target — keeps relaxing tier/caps/yield until ≥ 10
+// Tag every candidate with its strictest passing tier; drop the ones that fail
+// even Permissive (negative ROE / payout > 150% / debt off-the-charts).
+const labelled = present
+  .map((c) => ({ ...c, qualifyingTier: qualifyingTier(c.quote, c.metrics) }))
+  .filter((c) => c.qualifyingTier !== null)
+
+const tierCounts = labelled.reduce((acc, c) => {
+  acc[c.qualifyingTier] = (acc[c.qualifyingTier] ?? 0) + 1
+  return acc
+}, {})
+console.log(
+  `[tiers] Conservative=${tierCounts.conservative ?? 0} · Moderate=${tierCounts.moderate ?? 0} · Permissive=${tierCounts.permissive ?? 0} (dropped ${present.length - labelled.length} that failed even Permissive)`,
+)
+
 const TARGET = 10
-const result = fillToTarget(present, ecbDepositRate, TARGET)
-const { picked, tier, yieldMult, caps } = result
+const result = fillToTarget(labelled, ecbDepositRate, TARGET)
+const { picked, yieldMult, caps } = result
 const usedMinYield = +(ecbDepositRate * yieldMult).toFixed(2)
 
 if (picked.length === 0) {
   throw new Error(
-    `No candidates survived even the most permissive search (started with ${candidatePool.length} tickers, ${present.length} enriched). Not saving.`,
+    `No candidates survived even the most permissive search (started with ${candidatePool.length} tickers, ${present.length} enriched, ${labelled.length} passed tier floor). Not saving.`,
   )
 }
 
+const pickedTierCounts = picked.reduce((acc, p) => {
+  acc[p.qualifyingTier] = (acc[p.qualifyingTier] ?? 0) + 1
+  return acc
+}, {})
 console.log(
-  `[selection] Tier=${TIERS[tier].label} · yield-gate=${usedMinYield}% (${yieldMult}× ECB) · caps=${caps.sector}/sector,${caps.country}/country · picked=${picked.length}/${TARGET}`,
+  `[selection] yield-gate=${usedMinYield}% (${yieldMult}× ECB) · caps=${caps.sector}/sector,${caps.country}/country · picked=${picked.length}/${TARGET} · tiers in batch: C=${pickedTierCounts.conservative ?? 0} M=${pickedTierCounts.moderate ?? 0} P=${pickedTierCounts.permissive ?? 0}`,
 )
 if (picked.length < TARGET) {
   console.warn(
@@ -679,6 +717,8 @@ const companies = picked.map((p, i) => {
     // Quality fields
     qualityScore: p.qualityScore,
     qualityBreakdown: p.breakdown,
+    qualifyingTier: p.qualifyingTier,
+    qualifyingTierLabel: TIERS[p.qualifyingTier].label,
     metrics: {
       payoutRatio: p.metrics.payoutRatio,
       roe: p.metrics.roe,
@@ -696,10 +736,12 @@ const payload = {
   ecbDepositRate,
   minYield: usedMinYield,
   yieldMultiplier: yieldMult,
-  qualityTier: tier,
-  qualityTierLabel: TIERS[tier].label,
+  // Per-pick tier distribution (the legacy single batch-tier was dropped — each
+  // pick now carries its own qualifyingTier so the UI can label them).
+  tierDistribution: pickedTierCounts,
   poolSize: candidatePool.length,
   enrichedCount: present.length,
+  tierFloorCount: labelled.length,
   qualifiedCount: picked.length,
   diversification: {
     maxPerSector: caps.sector === 999 ? null : caps.sector,
@@ -714,7 +756,7 @@ await db.collection('ai-recommendations').doc('latest').set(payload)
 await db.collection('ai-recommendations').doc(today).set(payload)
 
 console.log(
-  `[${new Date().toISOString()}] Saved /latest and /${today}. Tier=${tier}; Top: ${companies[0]?.company} @ ${companies[0]?.dividendYield}% yield (score ${companies[0]?.qualityScore}/10).`,
+  `[${new Date().toISOString()}] Saved /latest and /${today}. Top: ${companies[0]?.company} (${companies[0]?.qualifyingTierLabel}) @ ${companies[0]?.dividendYield}% yield (score ${companies[0]?.qualityScore}/10).`,
 )
 
 // ── Helpers ─────────────────────────────────────────────────────────────────

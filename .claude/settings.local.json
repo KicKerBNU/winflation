@@ -66,7 +66,34 @@
       "Bash(git -C /Users/evertonbuzzi/Dev/winflation.eu/.claude/worktrees/naughty-poincare-ad831a commit -m ' *)",
       "Bash(git -C /Users/evertonbuzzi/Dev/winflation.eu/.claude/worktrees/naughty-poincare-ad831a add CLAUDE.md)",
       "Bash(git -C /Users/evertonbuzzi/Dev/winflation.eu/.claude/worktrees/naughty-poincare-ad831a push -u origin claude/naughty-poincare-ad831a)",
-      "Bash(node --check /Users/evertonbuzzi/Dev/winflation.eu/scripts/bulk-fetch-spine-logos.mjs)"
+      "Bash(node --check /Users/evertonbuzzi/Dev/winflation.eu/scripts/bulk-fetch-spine-logos.mjs)",
+      "Bash(node --env-file=.env.local -e ' *)",
+      "Bash(mv /tmp/diag.mjs ./scripts/_diag-tmp.mjs)",
+      "Bash(node --env-file=.env.local ./scripts/_diag-tmp.mjs)",
+      "Bash(node --env-file=.env.local --check scripts/generate-recommendations.mjs)",
+      "Bash(echo \"---exit $?\")",
+      "Bash(echo \"exit=$?\")",
+      "Read(//tmp/**)",
+      "Bash(node --env-file=.env.local scripts/generate-recommendations.mjs)",
+      "Bash(node --env-file=.env.local scripts/_verify-tmp.mjs)",
+      "Edit(/.claude/skills/verify-firestore-script-output/**)",
+      "Bash(echo \"dev=$!\")",
+      "Bash(curl -sf http://localhost:5173/ -o /dev/null)",
+      "Bash(curl -sf http://localhost:5174/ai-recommendation -o /tmp/page.html)",
+      "Bash(curl -sf \"http://localhost:5174/src/modules/ai-recommendation/ai-recommendation.vue?vue&type=script&setup=true&lang.ts\" -o /tmp/comp.js)",
+      "Bash(curl -sf \"http://localhost:5174/src/modules/ai-recommendation/ai-recommendation-detail.vue?vue&type=script&setup=true&lang.ts\" -o /tmp/detail.js)",
+      "Bash(xargs -r kill)",
+      "Bash(echo \"pid=$!\")",
+      "Bash(curl -sf -o /dev/null http://localhost:5173/)",
+      "Bash(curl -sf -o /dev/null http://localhost:5174/)",
+      "Bash(curl -sf -o /dev/null http://localhost:5175/)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:5175/__TRACKED_VAR__)",
+      "Bash(grep -n \"^| \\\\`auth\\\\`\\\\|^| \\\\`follow\\\\`\\\\|^| \\\\`theme\\\\`\\\\|^## Architecture\\\\|^## Firestore Security\" /Users/evertonbuzzi/Dev/winflation.eu/README.md)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:__TRACKED_VAR__/)"
+    ],
+    "additionalDirectories": [
+      "/tmp",
+      "/Users/evertonbuzzi/Dev/winflation.eu/.claude/skills"
     ]
   },
   "hooks": {
