@@ -6,20 +6,19 @@
 //   3. Try logo URL candidates in priority order:
 //        Gemini suggestion → Clearbit → Google favicon → DuckDuckGo favicon
 //   4. Validate (image content-type, size ≤ 2 MB) and write to public/logos/.
-//   5. Update Firestore logos/<TICKER> with the resulting URL.
 //
 // After running, commit `public/logos/*` and push — Netlify rebuilds and the
-// logos serve from /logos/<TICKER>.<ext>.
+// logos serve from /logos/<TICKER>.<ext>. The daily AI recommendations cron
+// auto-populates `logoUrl` on each pick from public/logos/, so no Firestore
+// step is needed.
 //
 // Usage (from project root):
 //   node --env-file=.env.local scripts/bulk-fetch-spine-logos.mjs           # skip existing
 //   node --env-file=.env.local scripts/bulk-fetch-spine-logos.mjs --force   # redo all
 import { SPINE } from './eu-dividend-universe.mjs'
 import { GoogleGenAI } from '@google/genai'
-import { initializeApp, cert } from 'firebase-admin/app'
-import { getFirestore } from 'firebase-admin/firestore'
 import YahooFinance from 'yahoo-finance2'
-import { existsSync, mkdirSync, readdirSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readdirSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -28,27 +27,12 @@ const force = process.argv.includes('--force')
 const yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey'] })
 const geminiKey =
   process.env.GEMINI_API_KEY?.trim() || process.env.VITE_GEMINI_API_KEY?.trim() || ''
-const firebaseJsonRaw = process.env.FIREBASE_SERVICE_ACCOUNT
 
 if (!geminiKey) {
   console.error('Missing GEMINI_API_KEY (or VITE_GEMINI_API_KEY) in env.')
   process.exit(1)
 }
-if (!firebaseJsonRaw?.trim()) {
-  console.error('Missing FIREBASE_SERVICE_ACCOUNT in env.')
-  process.exit(1)
-}
 
-let serviceAccount
-try {
-  serviceAccount = JSON.parse(firebaseJsonRaw)
-} catch (err) {
-  console.error(`FIREBASE_SERVICE_ACCOUNT must be valid JSON: ${err.message}`)
-  process.exit(1)
-}
-
-initializeApp({ credential: cert(serviceAccount) })
-const db = getFirestore()
 const ai = new GoogleGenAI({ apiKey: geminiKey })
 
 const projectRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -225,21 +209,11 @@ for (const item of domainResolved) {
       const fileName = `${safe}.${ext}`
       const filePath = resolve(logosDir, fileName)
       writeFileSync(filePath, buf)
-      const logoUrl = `/logos/${fileName}`
-      await db.collection('logos').doc(safe).set({
-        ticker: item.ticker,
-        logoUrl,
-        sourceUrl: url,
-        contentType: ct,
-        sizeBytes: buf.length,
-        storedInRepo: true,
-        updatedAt: new Date().toISOString(),
-      })
       console.log(`[bulk-logos] ✓ ${item.ticker} → ${fileName} (${buf.length}B from ${url.slice(0, 60)})`)
       successes.push(item.ticker)
       saved = true
       break
-    } catch (err) {
+    } catch {
       // try next candidate
     }
   }

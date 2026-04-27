@@ -5,17 +5,16 @@
 #   GEMINI_API_KEY            — Google AI Studio free key (aistudio.google.com)
 #   FIREBASE_SERVICE_ACCOUNT  — JSON string of the Firebase Admin service account key
 #                               (Firebase Console → Project Settings → Service Accounts → Generate new private key)
-#   FIREBASE_STORAGE_BUCKET   — (optional) storage bucket name, e.g. "winflation.firebasestorage.app".
-#                               Defaults to "<projectId>.firebasestorage.app".
 #
 # Required Firestore setup:
-#   Collection: ai-recommendations   Document: latest
-#   Collection: logos                Per-ticker logo cache (doc id = safe ticker)
+#   Collection: ai-recommendations   Documents: latest + dated snapshots
 #   Security rule: allow read; (public read is enough — writes only from Admin SDK)
 #
-# Required Storage setup:
-#   Bucket must exist (Firebase Console → Storage → Get started).
-#   Objects under logos/* are made public via Admin SDK makePublic(); no bucket-wide rule change needed.
+# Logos:
+#   Logos live in repo at public/logos/<TICKER>.<ext> and are served same-origin via
+#   Netlify (/logos/<TICKER>.<ext>). The script reads public/logos/ at runtime to
+#   populate logoUrl on each pick. No Firestore collection, no Firebase Storage,
+#   no third-party CDN.
 
 name: Generate AI Dividend Recommendations
 
@@ -43,5 +42,4 @@ jobs:
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-          FIREBASE_STORAGE_BUCKET: ${{ secrets.FIREBASE_STORAGE_BUCKET }}
         run: node generate-recommendations.mjs

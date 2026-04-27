@@ -89,7 +89,12 @@
       "Bash(curl -sf -o /dev/null http://localhost:5175/)",
       "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:5175/__TRACKED_VAR__)",
       "Bash(grep -n \"^| \\\\`auth\\\\`\\\\|^| \\\\`follow\\\\`\\\\|^| \\\\`theme\\\\`\\\\|^## Architecture\\\\|^## Firestore Security\" /Users/evertonbuzzi/Dev/winflation.eu/README.md)",
-      "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:__TRACKED_VAR__/)"
+      "Bash(curl -s -o /dev/null -w '%{http_code}' http://localhost:__TRACKED_VAR__/)",
+      "Edit(/.claude/skills/diagnose-firestore-permission-denied/**)",
+      "Bash(grep -rn \"collection.*logos\\\\|'logos'\\\\|\\\\\"logos\\\\\"\\\\|logos/\\\\${\\\\|/logos/\" /Users/evertonbuzzi/Dev/winflation.eu/src/ /Users/evertonbuzzi/Dev/winflation.eu/scripts/)",
+      "Bash(node --check /Users/evertonbuzzi/Dev/winflation.eu/scripts/update-logo.mjs)",
+      "Bash(grep -n \"fetch-company-logos\\\\|scripts/$\\\\|^scripts/\" /Users/evertonbuzzi/Dev/winflation.eu/README.md)",
+      "Bash(grep -n \"Firestore logos\\\\|logos collection\\\\|logos/<TICKER> Firestore\\\\|logos/<TICKER>\\\\` Firestore\\\\|Firestore \\\\`logos\\\\|fetch-company-logos\\\\|Firebase Storage\" CLAUDE.md README.md)"
     ],
     "additionalDirectories": [
       "/tmp",

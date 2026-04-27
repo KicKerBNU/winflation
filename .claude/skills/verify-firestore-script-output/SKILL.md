@@ -2,9 +2,8 @@
 name: verify-firestore-script-output
 description: >
   Use this skill after modifying a script under `scripts/` that writes to
-  Firestore (e.g. `generate-recommendations.mjs`, `update-logo.mjs`,
-  `fetch-company-logos.mjs`) and you need to confirm the new fields actually
-  landed in the saved doc with the correct shape. Generates a temporary
+  Firestore (e.g. `generate-recommendations.mjs`) and you need to confirm
+  the new fields actually landed in the saved doc with the correct shape. Generates a temporary
   read-only verification script, runs it with the project's `.env.local`,
   prints a structured summary of the doc, and cleans the temp file up.
   Triggers: "verify the Firestore output", "did the new field land", "check

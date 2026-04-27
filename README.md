@@ -197,8 +197,9 @@ src/
 └── assets/styles/      # Tailwind entry point
 
 scripts/
+├── eu-dividend-universe.mjs       # Curated ~55-ticker spine list
 ├── generate-recommendations.mjs   # Daily Gemini → Firestore job (cron)
-├── fetch-company-logos.mjs        # One-shot logo backfill for all current picks
+├── bulk-fetch-spine-logos.mjs     # One-time bulk logo backfill into public/logos/
 └── update-logo.mjs                # One-off logo replacement for a single ticker
 
 .github/workflows/
@@ -244,25 +245,25 @@ The script reads `FMP_API_KEY` (or falls back to `VITE_FMP_API_KEY`) for the Yah
 
 ### Replace a single company logo
 
-When the AI-resolved logo for a ticker is wrong or low quality, push a better source URL into the database with a one-shot script. Run from the project root so it picks up `.env.local`:
+When the AI-resolved logo for a ticker is wrong or low quality, push a better source URL with a one-shot script:
 
 ```bash
-node --env-file=.env.local scripts/update-logo.mjs ISP.MI \
+node scripts/update-logo.mjs ISP.MI \
   'https://companieslogo.com/img/orig/ISP.MI-e8dc3cc4.png?t=1746543241'
 ```
 
 What it does:
 
 1. Downloads the image, validates content-type and size (≤ 2 MB)
-2. Writes the file to `public/logos/<TICKER>.<ext>` (bundled with the deploy, served same-origin at `/logos/<TICKER>.<ext>`)
-3. Updates the Firestore `logos/<TICKER>` document
-4. Patches `ai-recommendations/latest`
+2. Writes the file to `public/logos/<TICKER>.<ext>`
 
-After the script finishes, **commit the new file and push** — Netlify will rebuild and serve the logo at `https://winflation.eu/logos/<TICKER>.<ext>`.
+After the script finishes, **commit the new file and push** — Netlify will rebuild and serve the logo at `https://winflation.eu/logos/<TICKER>.<ext>`. The next AI recommendations cron run will then auto-populate `logoUrl` on every pick that matches the new file. **No Firestore step required** — the daily cron reads `public/logos/` at runtime.
+
+This script needs no `FIREBASE_SERVICE_ACCOUNT` and no env file.
 
 ### Bulk-fetch logos for the entire SPINE (one-time / occasional)
 
-Pre-loads logos for every ticker in `scripts/eu-dividend-universe.mjs` into `public/logos/`. Since picks come from the spine, this means the daily cron rarely needs to resolve a logo at runtime.
+Pre-loads logos for every ticker in `scripts/eu-dividend-universe.mjs` into `public/logos/`. Since picks come from the spine, the daily cron rarely needs to resolve a logo at runtime.
 
 ```bash
 node --env-file=.env.local scripts/bulk-fetch-spine-logos.mjs           # skip tickers that already have a logo file
@@ -274,19 +275,8 @@ What it does for each ticker:
 1. Resolves the company website domain via Yahoo profile
 2. Tries logo URL candidates in priority order: Gemini suggestion → Clearbit → Google favicon → DuckDuckGo favicon
 3. Validates (image content-type, ≤ 2 MB) and writes to `public/logos/<TICKER>.<ext>`
-4. Updates Firestore `logos/<TICKER>` with the same URL
 
-After running, **commit `public/logos/` and push** — Netlify rebuilds and serves the logos same-origin. Failed tickers are listed at the end of the run; fix them individually with `update-logo.mjs`.
-
-The daily `generate-recommendations.mjs` cron auto-populates `logoUrl` on each pick from `public/logos/`, so once the spine is backfilled, no further logo work is needed in CI.
-
-### Refresh logos for non-spine picks (legacy)
-
-```bash
-GEMINI_API_KEY=<key> FIREBASE_SERVICE_ACCOUNT=<json> node scripts/fetch-company-logos.mjs
-```
-
-Mostly redundant now that the spine is pre-loaded — kept for the rare watch-list pick that lands in `ai-recommendations/latest`. Uses Firebase Storage (will fall back to source URL if Storage isn't enabled).
+After running, **commit `public/logos/` and push** — Netlify rebuilds and serves the logos same-origin. Failed tickers are listed at the end; fix them individually with `update-logo.mjs`. Needs only `GEMINI_API_KEY` (no Firestore).
 
 ---
 
@@ -303,108 +293,11 @@ match /ai-recommendations/{doc} {
 
 The `users/{uid}` collection is owner-only — used by both `follow/` (for tracked tickers) and `settings/` (for `taxCountryCode`):
 
-```
-match /users/{uid} {
-  allow read, write: if request.auth.uid == uid;
-}
-```
-
 ---
 
 ## AI Recommendations — Roadmap / TODO
 
 Findings from a critical review of the AI Dividend Picks feature, ordered by severity. Tackle top to bottom.
 
-### P0 — Regulatory & legal exposure (do first)
-
-The site publishes content shaped like an investment recommendation (per-stock `bullish/neutral/bearish` labels, daily "Pick of the week", ranked yields). Under EU rules (MAR, ESMA Reg 2016/958) this triggers disclosure obligations even for non-licensed publishers.
-
-- [x] Add a visible compliance band on `/ai-recommendation` and `/ai-recommendation/:ticker` ("informational only · not financial advice · AI-generated · verify before acting")
-- [x] Add a global footer disclaimer covering the whole site (inflation/dividends pages also touch financial topics)
-- [x] Add an "About these picks" section on the AI pages: methodology summary, AI-hallucination warning, data-freshness statement, DYOR call-out
-- [x] Add a positions / conflicts-of-interest disclosure (state whether the publisher holds any of the listed securities)
-- [x] Remove the unsupported claim in `aiRecommendation.editorialSubtitle` ("our model thinks beat inflation after tax") — neither inflation nor tax adjustment is computed in the pipeline
-- [x] Translate all new disclosure copy to pt-BR
-
-### P1 — Data integrity (fabricated numbers)
-
-The pipeline asks Gemini to produce `currentPrice`, `dividendYield`, `annualDividend`, `marketCap`, `priceChangePercent`, plus 5-year `historicYields` and `dividendsPerYear`. These are deterministic public numbers an LLM should not be inventing. Knowledge cutoff + "as of today" prompts produce confident fabrications.
-
-- [x] Refactor `scripts/generate-recommendations.mjs` to source numeric fields from a real-time API. **Decision:** Yahoo Finance (`yahoo-finance2` npm) as primary (no API key, generous rate limits, full EU exchange coverage) with FMP `/profile` as a per-ticker fallback. Avoided FMP-only because of its 100/day free-tier ceiling.
-- [x] Use Gemini only for narrative output (`pro`, `con`, `status`) and ticker selection — never numeric data
-- [x] Validate ticker existence before saving — Yahoo returning no quote drops the ticker; FMP fallback provides a second chance
-- [x] Persist daily snapshots — script now writes to both `ai-recommendations/latest` and `ai-recommendations/<YYYY-MM-DD>`
-
-### P2 — Selection methodology (yield-trap risk)
-
-The current screen is `dividendYield > 2× ECB`. High yield + large cap is one of the most reliable markers of an upcoming dividend cut (Vodafone, Orsted, Société Générale historical episodes). A real dividend screen prioritizes sustainability, not yield.
-
-- [x] Add payout-ratio screen (TTM, sector-aware: utilities/REITs allowed higher cap)
-- [x] Add free-cash-flow coverage check (FCF ÷ annual dividends paid)
-- [x] Add debt/EBITDA filter (financials excluded — leverage is structural for banks)
-- [x] Add dividend-growth-streak filter (consecutive years without > 30% cut, 5y window)
-- [x] Enforce diversification caps (max 3 per sector, max 3 per country)
-- [x] Cascading quality tiers (Conservative → Moderate → Permissive — strictest tier that yields ≥10 survivors wins)
-- [x] Composite Quality Score (0–10) — weighted: sustainability 40% / growth 30% / profitability 20% / yield 10%
-- [x] Curated EU dividend universe (`scripts/eu-dividend-universe.mjs`) — ~55 large-caps as the spine, augmented by ~10 Gemini "watch list" candidates per run
-- [x] Metric-aware narratives — Gemini sees the actual numbers when writing pro/con per pick (no more generic platitudes)
-- [x] Per-pick strategy tier badges (Conservative / Moderate / Permissive) on both the list and the detail page, plus a legend block on the list that defines each tier
-- [x] Fix `dividendStreak` off-by-one — the loop walked transitions only, capping streak at 4 and making the Conservative tier (`minStreak=5`) mathematically impossible. Streak now includes the starting year, so a 5-year stable payer scores 5
-- [x] Decouple tier from selection — every pick is *labelled* with its strictest passing tier; selection narrows on yield-gate × diversification caps until 10 are filled, so the batch is a healthy mix of tiers (e.g. 4 Conservative / 1 Moderate / 5 Permissive) instead of falling through to a single tier wholesale
-- [x] Loosen Permissive thresholds for European reality — TTM payout > 100% is common for EU names in transition years and tells you little about future cuts; Permissive now allows payout ≤ 150% (175% for utilities/REITs), debt/EBITDA ≤ 7, ROE ≥ −5%
-- [x] Capture exact dividend payment dates per year (`payouts: [{date, amount}]`) so the detail page can show every payout date — useful for income-investor cash-flow planning
-- [ ] 90-day earnings-revision direction — skipped, not freely available from Yahoo
-- [ ] Forward P/E vs sector median — skipped, sector medians not available cheaply
-- [ ] Monthly review of `eu-dividend-universe.mjs` — manual maintenance task; remove names that have cut dividends or had quality deterioration
-
-### P2 — Brand promise: inflation comparison
-
-`winflation.eu` exists to compare yield against inflation. The AI picks page never shows it.
-
-- [x] Headline stays nominal yield — neutral, currency-independent, true regardless of who's reading. The personalised inflation comparison is contextual, not a substitution. **Initial implementation used issuer-country HICP, which was wrong from an investor perspective (a Brazilian holding ENEL.MI doesn't pay rent in Italy) — replaced with user's tax-residence HICP.**
-- [x] Per-pick "Beats / Matches / Loses your inflation" badge — green / amber / red, with the magnitude (`Beats by 2.4%`). Computed as `nominal yield − userHICP`, rounded to 1 decimal. Sharp threshold at 0 (any positive → Beats; exact 0 → Matches; negative → Loses).
-- [x] Logged-out users (and logged-in users without a tax country set) see only nominal yield — no badge.
-- [x] Logged-in users with a tax country see the badge on the hero card, every ranking card, and a prominent block on the detail page. A soft-prompt CTA invites logged-in users without a country to open Settings.
-- [x] **Settings page** (`/settings`, requiresAuth) with EU-27 country picker — placeholder/tooltip says *"Country where you declare taxes"* so the framing is unambiguous.
-- [x] User profile (`taxCountryCode`) persisted in Firestore under `users/{uid}` so it survives sessions. Same doc the `follow/` module already writes to (separate fields, both modules use `{merge: true}` so they don't collide). Required Firestore rule: `match /users/{uid} { allow read, write: if request.auth.uid == uid; }`
-- [x] Reuse the inflation data already loaded by the inflation module (no new API call needed) — the AI views call `useInflationStore().init()`, which is idempotent and already cached.
-
-**Known gaps (deferred):**
-
-- The badge ignores **FX risk** — a pt-BR user holding ENEL.MI receives EUR dividends that get converted to BRL; BRL/EUR moves can swamp the inflation adjustment. Folded into the P3 FX item below.
-- The badge ignores **withholding tax** — a Brazilian receiving Swiss dividends pays ~35% Swiss WHT pre-treaty; the gross-of-WHT real yield is misleading for them. Folded into the P3 WHT item below.
-- Only EU-27 tax countries are supported — that's where Eurostat HICP coverage exists. Adding non-EU residents (UK, CH, NO, BR, US, …) means wiring per-country inflation series.
-- Per-stock badge only — there is no portfolio-level "you're beating inflation by X% across your holdings" view. Captured below.
-
-### P3 — Methodology gaps a real advisor would catch
-
-- [x] **WHT v1 — education hub.** Settings page now hosts a per-source-country withholding table for the user's tax residence. 30 source countries (EU-27 + US, UK, CH), statutory rate + bilateral treaty cap with paperwork, "Applied at source" vs "Reclaim required" badge, one-line reclaim mechanics, search filter, "Reviewed YYYY-MM-DD" stamp, and a top disclaimer banner. Data is hand-curated in `src/modules/settings/domain/withholding-rates.ts`.
-- [ ] **WHT v2 — fold into picks pages and the "Beats your inflation" badge.** Once v1 has settled, surface the user-specific WHT on the AI Picks list (a small chip on each pick: "−12% WHT to reclaim" or "−15% applied at source") and fold the post-WHT yield into the inflation-beat badge math. The current gross-of-WHT comparison overstates clear-to-account income for high-WHT chains (CH→PT, FR→PT, etc).
-- [ ] Flag and price in **FX risk** for non-EUR currencies (NOK, SEK, DKK, GBP, CHF) — and for non-EUR-resident users (e.g. pt-BR users with EUR exposure). The current "Beats your inflation" badge subtracts user HICP from EUR-quoted yield, ignoring BRL/EUR drift; for cross-currency holdings the FX leg often dwarfs the inflation adjustment. Either fold FX into the badge math or label it explicitly *"in pick currency, before FX"*
-- [ ] Support non-EU-27 tax residences in Settings (UK, CH, NO at minimum, ideally global) — needs a per-country inflation series beyond Eurostat HICP (e.g. ONS for UK, BFS for CH, BCB/IBGE for BR, BLS for US)
-- [ ] Define a clear time window for `priceChangePercent` (currently ambiguous — vs. yesterday? YTD? 1y?)
-- [ ] Add total-return view (yield + price action), not yield-only ranking
-- [ ] Add ex-dividend date and next-payment date
-- [ ] Define an explicit rubric for `status` (bullish/neutral/bearish) instead of letting the model decide ad-hoc
-- [ ] Replace single-sentence `pro`/`con` with a structured thesis paragraph
-- [ ] Portfolio-level "Beats your inflation" — once the `follow/` module gains cost basis + share counts, compute a portfolio-weighted real yield and headline it on `/followed`. Today's badge is per-stock-hypothetical, not "your money."
-
-### P3 — Pipeline & operational
-
-- [ ] Stamp every numeric field with the timestamp it's valid as of, render in the UI
-- [ ] Add a correctness gate before Firestore write (schema, ticker exists, country/exchange consistent)
-- [ ] Restrict Gemini-suggested logo URLs to a host whitelist (Wikimedia, well-known CDNs) — currently fetches arbitrary URLs the LLM returns
-- [ ] Fix i18n drift: `aiRecommendation.refreshesDaily` still reads "8:00 UTC" but cron is now `02:00 UTC`
-- [ ] Update README cron reference (this file says 08:00 UTC; workflow now runs at 02:00 UTC)
-
-### P4 — Replace Firebase Storage with a free image-hosting alternative
-
-**Resolved**: logos now live in `public/logos/<TICKER>.<ext>` and are served same-origin via Netlify (`/logos/<TICKER>.<ext>`). No third-party CDN, no Firebase Storage Blaze plan, no CORS. Tradeoff: changing a logo requires a commit + push to trigger a Netlify rebuild — fine for stable EU large-cap tickers.
-
-- [x] Pick the host: **same-origin via `public/logos/`** (Netlify serves it from the existing free deploy)
-- [x] Refactor `scripts/update-logo.mjs` to write files to `public/logos/` and skip Firebase Storage entirely
-- [ ] Refactor `scripts/fetch-company-logos.mjs` similarly (still falls back to external hotlinks; lower urgency since `update-logo.mjs` is the canonical fix-a-bad-logo path)
-- [x] Document the new flow in `README.md`
-
-### P5 — Add MONTHLY Dividend strategy
+### P1 — Add MONTHLY Dividend strategy for Global markets
 = [ ] - Create a new module dedicated to monthly income investing on all markets of the world not just European ones.
