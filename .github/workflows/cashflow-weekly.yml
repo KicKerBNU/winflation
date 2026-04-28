@@ -1,0 +1,36 @@
+# Runs weekly (Mondays at 03:00 UTC) and stores the curated monthly-paying
+# cashflow picks in Firestore. Users visiting /cashflow read the cached doc.
+#
+# Required GitHub Secrets:
+#   FIREBASE_SERVICE_ACCOUNT  — JSON string of the Firebase Admin service account key
+#
+# Required Firestore setup:
+#   Collection: cashflow   Documents: latest + dated snapshots
+#   Security rule: allow read; (public read — writes only from Admin SDK)
+
+name: Generate Cashflow Picks
+
+on:
+  schedule:
+    - cron: '0 3 * * 1'
+  workflow_dispatch:
+
+jobs:
+  generate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+
+      - name: Install script dependencies
+        working-directory: scripts
+        run: npm install
+
+      - name: Generate and store cashflow picks
+        working-directory: scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+        run: node generate-cashflow.mjs

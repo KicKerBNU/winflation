@@ -94,7 +94,12 @@
       "Bash(grep -rn \"collection.*logos\\\\|'logos'\\\\|\\\\\"logos\\\\\"\\\\|logos/\\\\${\\\\|/logos/\" /Users/evertonbuzzi/Dev/winflation.eu/src/ /Users/evertonbuzzi/Dev/winflation.eu/scripts/)",
       "Bash(node --check /Users/evertonbuzzi/Dev/winflation.eu/scripts/update-logo.mjs)",
       "Bash(grep -n \"fetch-company-logos\\\\|scripts/$\\\\|^scripts/\" /Users/evertonbuzzi/Dev/winflation.eu/README.md)",
-      "Bash(grep -n \"Firestore logos\\\\|logos collection\\\\|logos/<TICKER> Firestore\\\\|logos/<TICKER>\\\\` Firestore\\\\|Firestore \\\\`logos\\\\|fetch-company-logos\\\\|Firebase Storage\" CLAUDE.md README.md)"
+      "Bash(grep -n \"Firestore logos\\\\|logos collection\\\\|logos/<TICKER> Firestore\\\\|logos/<TICKER>\\\\` Firestore\\\\|Firestore \\\\`logos\\\\|fetch-company-logos\\\\|Firebase Storage\" CLAUDE.md README.md)",
+      "Bash(node --check /Users/evertonbuzzi/Dev/winflation.eu/scripts/generate-cashflow.mjs)",
+      "Bash(node --env-file=.env.local /Users/evertonbuzzi/Dev/winflation.eu/scripts/generate-cashflow.mjs)",
+      "Bash(grep -n \"P5 — Add MONTHLY\\\\|^| \\\\`ai-recommendation\\\\`\\\\|^| \\\\`minerals\\\\`\" /Users/evertonbuzzi/Dev/winflation.eu/README.md)",
+      "Bash(grep -n \"scripts/$\\\\|generate-recommendations.mjs\\\\|## Firestore Security Rules\\\\|match /ai-recommendations\" /Users/evertonbuzzi/Dev/winflation.eu/README.md)",
+      "Bash(grep -n \"## Features\\\\|^| \\\\`ai-recommendation\\\\`\\\\|^| \\\\`minerals\\\\`\\\\|^| \\\\`auth\\\\`\\\\|^## Per-user Firestore\" /Users/evertonbuzzi/Dev/winflation.eu/CLAUDE.md)"
     ],
     "additionalDirectories": [
       "/tmp",

@@ -33,6 +33,7 @@ src/
 │   ├── inflation/
 │   ├── dividends/
 │   ├── ai-recommendation/
+│   ├── cashflow/       # /cashflow — monthly-paying dividend instruments
 │   ├── minerals/
 │   ├── auth/           # Firebase Auth + per-user profile (taxCountryCode)
 │   ├── follow/         # Followed tickers/countries
@@ -47,8 +48,10 @@ src/
 └── assets/styles/      # Tailwind entry point
 
 scripts/
-├── eu-dividend-universe.mjs       # Curated ~55-ticker spine list (manual monthly review)
-├── generate-recommendations.mjs   # Daily quality-screened pipeline (cron at 02:00 UTC)
+├── eu-dividend-universe.mjs       # Curated ~55-ticker spine list (AI Picks)
+├── cashflow-universe.mjs          # Curated ~30-ticker monthly-payer list (Cashflow)
+├── generate-recommendations.mjs   # Daily AI Picks pipeline (cron at 02:00 UTC)
+├── generate-cashflow.mjs          # Weekly Cashflow pipeline (cron Mondays 03:00 UTC)
 ├── bulk-fetch-spine-logos.mjs     # One-time logo backfill for the entire SPINE
 └── update-logo.mjs                # One-off logo replacement for a single ticker
 ```
@@ -69,6 +72,13 @@ All under `scripts/`. Each requires `FIREBASE_SERVICE_ACCOUNT` (and `GEMINI_API_
   - **Persistence**: writes `ai-recommendations/latest` and `ai-recommendations/<YYYY-MM-DD>`. Each company has its own `qualifyingTier` + `qualifyingTierLabel`. Top-level doc has `tierDistribution`, `tierFloorCount`, candidate counts, sector/country distribution.
   - **Dividend payouts**: each `dividendsPerYear[i]` carries a `payouts: [{ date, amount }]` array — every individual payout in the 5-year window with its exact date.
 - `eu-dividend-universe.mjs` — curated spine list, plain string array of Yahoo-formatted tickers. Review monthly.
+- `generate-cashflow.mjs` — weekly cashflow pipeline (Mondays 03:00 UTC).
+  - **Universe**: hand-curated `cashflow-universe.mjs` — each entry is `{ ticker, assetClass, notes }` where `assetClass` ∈ `equity-reit | mortgage-reit | bdc | energy-infra | stock | etf`.
+  - **Enrichment**: Yahoo `quoteSummary` (price, summaryDetail, summaryProfile, defaultKeyStatistics, calendarEvents) + `chart()` for trailing-12mo dividend events.
+  - **Monthly verification**: drops anything with fewer than 9 or more than 14 distributions in the last 12 months. The lower bound 9 (not 12) accommodates Yahoo's `chart()` occasionally missing 1-3 events near period boundaries; the upper bound rejects names that aren't actually monthly. Several tickers were pruned for moving off monthly (Pembina Pipeline → quarterly 2022, Annaly Capital → quarterly 2017).
+  - **Risk tier** (deterministic): `equity-reit / etf / stock` → low, `bdc / energy-infra` → medium, `mortgage-reit` → high.
+  - **Persistence**: writes `cashflow/latest` and `cashflow/<YYYY-MM-DD>`. Each pick carries `dividendYield`, `paymentFrequency` (count of distributions in last 12mo), `assetClass`, `riskTier`, `lastDividendDate/Amount`, `nextExDividendDate`, `nextPaymentDate`, `recentDistributions: [{date, amount}]`, plus the standard quote fields.
+- `cashflow-universe.mjs` — curated monthly-payer list. Review when names change distribution cadence; tickers that go quarterly must be removed.
 
 ## Features
 
@@ -79,6 +89,7 @@ All under `scripts/`. Each requires `FIREBASE_SERVICE_ACCOUNT` (and `GEMINI_API_
 | `inflation` | `/inflation`, `/inflation/:countryCode` | HICP inflation across EU countries |
 | `dividends` | `/dividends`, `/dividends/:ticker` | Dividend stock list + per-company history |
 | `ai-recommendation` | `/ai-recommendation`, `/ai-recommendation/:ticker` | Daily Gemini-curated dividend picks. Hero + ranking cards carry strategy-tier badges. Detail page shows exact dividend payout dates. Logged-in users with a tax country see a per-pick "Beats / Matches / Loses your inflation" badge. |
+| `cashflow` | `/cashflow`, `/cashflow/:ticker` | Monthly-paying dividend instruments accessible to EU retail investors (US + TSX equity REITs, BDCs, mortgage REITs, monthly-paying stocks). Hand-curated universe (~30 tickers) populated weekly. List page has name search + min-yield slider + sort modes; detail page shows trailing 12 distributions, ex-div countdown, deterministic 3-tier risk badge, reused WHT chip and inflation badge. |
 | `minerals` | `/minerals`, `/minerals/:countryCode` | Critical-mineral reserves and production by EU country |
 | `auth` | `/login`, `/register` | Firebase Auth (`guestOnly`). Owns the per-user profile (`taxCountryCode`) via `user-profile.store`. |
 | `follow` | `/followed` | Followed tickers/countries (`requiresAuth`). Reads/writes `users/{uid}.followed*` fields. |
@@ -234,10 +245,10 @@ Notable bilateral overrides currently encoded:
 
 ## Current Focus
 
-P3 of the AI-recommendations roadmap (in README.md):
-
+- ✅ **Cashflow v1** — new `/cashflow` page for monthly-paying instruments. Hand-curated universe (~30 tickers, US + Canadian + select monthly stocks), weekly Yahoo-driven cron, deterministic 3-tier risk badge by asset class, ex-dividend countdown chips, distribution bar chart for trailing 12 months, reused inflation badge + WHT chip. Asia skipped; UCITS-restricted US ETFs intentionally excluded.
 - ✅ **WHT v1 — education hub in Settings.** Per-source-country withholding table for the user's tax residence. 30 source countries, statutory + treaty cap, "Applied at source" vs "Reclaim required" badge, reclaim-mechanics one-liner, search filter, reviewed-date stamp, disclaimer banner.
-- ⏳ **WHT v2** — surface user-specific WHT on AI Picks list/detail and fold post-WHT yield into the inflation-beat badge math.
+- ⏳ **WHT v2** — surface user-specific WHT on AI Picks list/detail and fold post-WHT yield into the inflation-beat badge math. (WHT chip already lives on the Cashflow detail page; same pattern can apply to AI Picks.)
+- ⏳ **Cashflow v2** — total-return view (price history alongside distributions), distribution-coverage signal (FFO/AFFO for REITs, NII for BDCs), highlighting recent distribution cuts.
 - 🛑 FX risk: badge ignores it (BRL/EUR drift can dwarf the inflation adjustment for cross-currency holdings).
 - 🛑 Non-EU-27 tax residences (UK, CH, NO, BR, US): need new inflation series.
 - 🛑 Total-return view, structured thesis paragraph, ex-dividend + next-payment date, deterministic `status` rubric, portfolio-level real yield (depends on `follow/` becoming a holdings tracker).
