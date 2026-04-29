@@ -1,14 +1,19 @@
 <script setup lang="ts">
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
+import { Chart, registerables } from 'chart.js'
 import { useCashflowStore } from './store/cashflow.store'
 import { useInflationStore } from '@/modules/inflation/store/inflation.store'
 import { useAuthStore } from '@/modules/auth/store/auth.store'
 import { useUserProfileStore } from '@/modules/auth/store/user-profile.store'
+import { useThemeStore } from '@/modules/theme/store/theme.store'
 import { getWhtForPair } from '@/modules/settings/domain/withholding-rates'
+import { getLogoUrl } from '@/services/logoManifest'
 import FollowButton from '@/modules/follow/components/FollowButton.vue'
 import type { CashflowPick, RiskTier, AssetClass } from './domain/cashflow.types'
+
+Chart.register(...registerables)
 
 const { t, locale } = useI18n()
 const route = useRoute()
@@ -17,6 +22,7 @@ const store = useCashflowStore()
 const inflationStore = useInflationStore()
 const authStore = useAuthStore()
 const profileStore = useUserProfileStore()
+const themeStore = useThemeStore()
 
 const ticker = computed(() => decodeURIComponent(route.params.ticker as string))
 const pick = computed<CashflowPick | null>(
@@ -155,13 +161,28 @@ function fmtPct(rate: number): string {
   return `${parseFloat((rate * 100).toFixed(3))}%`
 }
 
-// ── Distributions grouping (by year-month for compact rendering) ──────────
-const distributionsDescending = computed(() => {
+// ── Distributions list (grouped by year, newest first) ───────────────────
+interface DistributionYearGroup {
+  year: number
+  total: number
+  rows: { date: string; amount: number }[]
+}
+
+const distributionsByYear = computed<DistributionYearGroup[]>(() => {
   if (!pick.value) return []
-  return [...pick.value.recentDistributions].sort((a, b) => b.date.localeCompare(a.date))
+  const groups = new Map<number, DistributionYearGroup>()
+  for (const d of pick.value.recentDistributions) {
+    const y = Number(d.date.slice(0, 4))
+    if (!groups.has(y)) groups.set(y, { year: y, total: 0, rows: [] })
+    const g = groups.get(y)!
+    g.total += d.amount
+    g.rows.push(d)
+  }
+  for (const g of groups.values()) g.rows.sort((a, b) => b.date.localeCompare(a.date))
+  return [...groups.values()].sort((a, b) => b.year - a.year)
 })
 
-// Largest distribution in the trailing window — used to scale bar heights
+// Largest single distribution across the full 5y window — scales bar widths
 const maxDist = computed(() => {
   const xs = pick.value?.recentDistributions.map((d) => d.amount) ?? []
   return Math.max(...xs, 0.01)
@@ -170,6 +191,174 @@ const maxDist = computed(() => {
 function barWidthPct(amount: number): string {
   return `${Math.max((amount / maxDist.value) * 100, 8)}%`
 }
+
+// ── 5y price-history chart with dividend "D" markers ─────────────────────
+const priceCanvas = ref<HTMLCanvasElement | null>(null)
+let priceChart: Chart | null = null
+
+const hasPriceHistory = computed(() => (pick.value?.priceHistory?.length ?? 0) > 0)
+
+const priceHistorySinceLabel = computed(() => {
+  const first = pick.value?.priceHistory?.[0]?.date
+  if (!first) return null
+  return new Date(first + 'T00:00:00Z').toLocaleDateString(locale.value, { month: 'short', year: 'numeric' })
+})
+
+// Custom point style: filled circle with a "D" letter inside. Built once per
+// theme; scaled by Chart.js when drawn. Cached so we don't rebuild per point.
+function buildDividendMarker(isDark: boolean): HTMLCanvasElement {
+  const size = 13
+  const dpr = typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1
+  const cv = document.createElement('canvas')
+  cv.width = size * dpr
+  cv.height = size * dpr
+  const ctx = cv.getContext('2d')!
+  ctx.scale(dpr, dpr)
+  ctx.beginPath()
+  ctx.arc(size / 2, size / 2, size / 2 - 0.5, 0, Math.PI * 2)
+  ctx.fillStyle = '#10b981'
+  ctx.fill()
+  ctx.strokeStyle = isDark ? '#064e3b' : '#ffffff'
+  ctx.lineWidth = 1
+  ctx.stroke()
+  ctx.fillStyle = '#ffffff'
+  ctx.font = 'bold 8px ui-sans-serif, system-ui, sans-serif'
+  ctx.textAlign = 'center'
+  ctx.textBaseline = 'middle'
+  ctx.fillText('D', size / 2, size / 2 + 0.5)
+  return cv
+}
+
+function buildPriceChart() {
+  if (!priceCanvas.value || !pick.value) return
+  priceChart?.destroy()
+  const history = pick.value.priceHistory
+  if (!history || history.length === 0) return
+
+  const isDark = themeStore.isDark
+  const gridColor = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)'
+  const labelColor = isDark ? '#9ca3af' : '#6b7280'
+  const lineColor = '#10b981'
+  const fillColor = isDark ? 'rgba(16,185,129,0.18)' : 'rgba(16,185,129,0.14)'
+
+  const isoFromTs = (ts: number) => new Date(ts).toISOString().slice(0, 10)
+  const linePoints = history.map((p) => ({ x: new Date(p.date).getTime(), y: p.close }))
+
+  // Snap each dividend to the closest monthly close so the marker sits on the line
+  const closes = history.map((h) => ({ t: new Date(h.date).getTime(), close: h.close }))
+  const dividendPoints = pick.value.recentDistributions.map((d) => {
+    const t = new Date(d.date).getTime()
+    let nearest = closes[0]
+    let best = Math.abs(t - nearest.t)
+    for (const c of closes) {
+      const diff = Math.abs(t - c.t)
+      if (diff < best) { best = diff; nearest = c }
+    }
+    return { x: nearest.t, y: nearest.close, _amount: d.amount, _exDate: d.date }
+  })
+
+  const marker = buildDividendMarker(isDark)
+  const currency = pick.value.currency
+
+  priceChart = new Chart(priceCanvas.value, {
+    type: 'line',
+    data: {
+      datasets: [
+        {
+          label: t('cashflow.priceLabel'),
+          data: linePoints,
+          parsing: false,
+          borderColor: lineColor,
+          backgroundColor: fillColor,
+          borderWidth: 2,
+          tension: 0.25,
+          fill: true,
+          pointRadius: 0,
+          pointHoverRadius: 0,
+          order: 2,
+        },
+        {
+          label: t('cashflow.dividendMarkerLabel'),
+          data: dividendPoints as unknown as { x: number; y: number }[],
+          parsing: false,
+          showLine: false,
+          pointStyle: marker,
+          pointRadius: 6.5,
+          pointHoverRadius: 8,
+          borderWidth: 0,
+          order: 1,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: { mode: 'nearest', intersect: true },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          callbacks: {
+            title: (items) => {
+              const it = items[0]
+              if (!it) return ''
+              const raw = it.raw as { x: number; _exDate?: string }
+              const iso = raw._exDate ?? isoFromTs(raw.x)
+              return new Date(iso + 'T00:00:00Z').toLocaleDateString(locale.value, { day: '2-digit', month: 'short', year: 'numeric' })
+            },
+            label: (ctx) => {
+              const raw = ctx.raw as { x: number; y: number; _amount?: number }
+              if (ctx.datasetIndex === 1 && raw._amount !== undefined) {
+                return [
+                  ` ${t('cashflow.dividendTooltipAmount', { amount: formatPrice(raw._amount, currency) })}`,
+                  ` ${t('cashflow.priceLabel')}: ${formatPrice(raw.y, currency)}`,
+                ]
+              }
+              return ` ${t('cashflow.priceLabel')}: ${formatPrice(raw.y, currency)}`
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          type: 'linear',
+          grid: { color: gridColor },
+          ticks: {
+            color: labelColor,
+            maxRotation: 0,
+            autoSkip: true,
+            maxTicksLimit: 6,
+            callback: (v) => new Date(Number(v)).getUTCFullYear().toString(),
+          },
+        },
+        y: {
+          position: 'right',
+          grid: { color: gridColor },
+          ticks: {
+            color: labelColor,
+            callback: (v) => formatPrice(Number(v), currency),
+          },
+        },
+      },
+    },
+  })
+}
+
+watch(
+  () => pick.value?.priceHistory,
+  (h) => {
+    if (h && h.length > 0) nextTick(() => buildPriceChart())
+  },
+  { immediate: true },
+)
+
+watch(() => themeStore.isDark, () => {
+  if (pick.value?.priceHistory?.length) buildPriceChart()
+})
+
+onBeforeUnmount(() => {
+  priceChart?.destroy()
+  priceChart = null
+})
 </script>
 
 <template>
@@ -209,8 +398,8 @@ function barWidthPct(amount: number): string {
       <div class="mb-6 flex flex-wrap items-start gap-4">
         <div class="flex h-16 w-16 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white p-2 dark:border-gray-700 dark:bg-gray-900">
           <img
-            v-if="pick.logoUrl"
-            :src="pick.logoUrl"
+            v-if="getLogoUrl(pick.ticker)"
+            :src="getLogoUrl(pick.ticker)!"
             :alt="pick.company"
             class="h-full w-full object-contain"
             @error="($event.target as HTMLImageElement).style.display = 'none'"
@@ -259,6 +448,24 @@ function barWidthPct(amount: number): string {
           :exchange="pick.exchange ?? ''"
           source="ai-pick"
         />
+      </div>
+
+      <!-- 5y price history with dividend markers -->
+      <div
+        v-if="hasPriceHistory"
+        class="mb-6 rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
+      >
+        <div class="mb-3 flex items-baseline justify-between gap-3">
+          <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
+            {{ t('cashflow.priceHistoryTitle') }}
+          </h2>
+          <span v-if="priceHistorySinceLabel" class="text-[11px] text-gray-400">
+            {{ t('cashflow.priceHistorySince', { date: priceHistorySinceLabel }) }}
+          </span>
+        </div>
+        <div class="relative h-64 sm:h-72">
+          <canvas ref="priceCanvas" />
+        </div>
       </div>
 
       <!-- Inflation-beat block (logged in + tax country set) -->
@@ -380,29 +587,39 @@ function barWidthPct(amount: number): string {
         </div>
       </div>
 
-      <!-- Distributions trailing 12mo -->
+      <!-- Distributions (up to trailing 5 years, grouped by year) -->
       <div class="mb-6 rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
         <h2 class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
           {{ t('cashflow.distributionsTitle') }}
         </h2>
-        <div v-if="distributionsDescending.length === 0" class="text-xs text-gray-400">
+        <div v-if="distributionsByYear.length === 0" class="text-xs text-gray-400">
           {{ t('cashflow.distributionsEmpty') }}
         </div>
-        <ul v-else class="divide-y divide-gray-100 dark:divide-gray-800">
-          <li
-            v-for="d in distributionsDescending"
-            :key="d.date"
-            class="grid grid-cols-[110px_1fr_auto] items-center gap-3 py-2 text-sm"
-          >
-            <span class="font-mono text-xs text-gray-500 dark:text-gray-400">{{ formatLongDate(d.date) }}</span>
-            <div class="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
-              <div class="h-full rounded-full bg-emerald-500/70 dark:bg-emerald-400/70" :style="{ width: barWidthPct(d.amount) }" />
-            </div>
-            <span class="font-mono text-sm font-bold text-gray-900 tabular-nums dark:text-white">
-              {{ formatPrice(d.amount, pick.currency) }}
-            </span>
-          </li>
-        </ul>
+        <div v-else class="space-y-5">
+          <section v-for="g in distributionsByYear" :key="g.year">
+            <header class="mb-2 flex items-baseline justify-between gap-3 border-b border-gray-100 pb-1 dark:border-gray-800">
+              <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ g.year }}</span>
+              <span class="text-[11px] text-gray-400">
+                {{ t('cashflow.distributionsYearTotal', { total: formatPrice(g.total, pick.currency), count: g.rows.length }) }}
+              </span>
+            </header>
+            <ul class="divide-y divide-gray-100 dark:divide-gray-800">
+              <li
+                v-for="d in g.rows"
+                :key="d.date"
+                class="grid grid-cols-[110px_1fr_auto] items-center gap-3 py-2 text-sm"
+              >
+                <span class="font-mono text-xs text-gray-500 dark:text-gray-400">{{ formatLongDate(d.date) }}</span>
+                <div class="h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+                  <div class="h-full rounded-full bg-emerald-500/70 dark:bg-emerald-400/70" :style="{ width: barWidthPct(d.amount) }" />
+                </div>
+                <span class="font-mono text-sm font-bold text-gray-900 tabular-nums dark:text-white">
+                  {{ formatPrice(d.amount, pick.currency) }}
+                </span>
+              </li>
+            </ul>
+          </section>
+        </div>
       </div>
 
       <!-- WHT (if logged in + tax country + we have data for the source country) -->

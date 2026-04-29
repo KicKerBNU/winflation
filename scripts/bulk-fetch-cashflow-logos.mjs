@@ -1,6 +1,6 @@
-// One-time bulk logo fetch for the SPINE list.
+// One-time bulk logo fetch for the CASHFLOW universe.
 //
-// For every ticker in scripts/eu-dividend-universe.mjs:
+// For every ticker in scripts/cashflow-universe.mjs:
 //   1. Skip if public/logos/<TICKER>.<ext> already exists (unless --force).
 //   2. Resolve the company's website domain via Yahoo profile.
 //   3. Try logo URL candidates in priority order:
@@ -8,14 +8,13 @@
 //   4. Validate (image content-type, size ≤ 2 MB) and write to public/logos/.
 //
 // After running, commit `public/logos/*` and push — Netlify rebuilds and the
-// logos serve from /logos/<TICKER>.<ext>. The daily AI recommendations cron
-// auto-populates `logoUrl` on each pick from public/logos/, so no Firestore
-// step is needed.
+// logos serve from /logos/<TICKER>.<ext>. The weekly cashflow cron auto-
+// populates `logoUrl` on each pick from public/logos/, so no Firestore step.
 //
 // Usage (from project root):
-//   node --env-file=.env.local scripts/bulk-fetch-spine-logos.mjs           # skip existing
-//   node --env-file=.env.local scripts/bulk-fetch-spine-logos.mjs --force   # redo all
-import { SPINE } from './eu-dividend-universe.mjs'
+//   node --env-file=.env.local scripts/bulk-fetch-cashflow-logos.mjs           # skip existing
+//   node --env-file=.env.local scripts/bulk-fetch-cashflow-logos.mjs --force   # redo all
+import { CASHFLOW_UNIVERSE } from './cashflow-universe.mjs'
 import { GoogleGenAI } from '@google/genai'
 import YahooFinance from 'yahoo-finance2'
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs'
@@ -97,7 +96,7 @@ async function fetchLogoSuggestions(items) {
   const list = items
     .map((c) => `- ${c.ticker} | ${c.name} | website: ${c.website || 'unknown'}`)
     .join('\n')
-  const prompt = `For each European company below, return the single best public URL to its official logo.
+  const prompt = `For each company below (US-listed REITs, BDCs, energy infrastructure and monthly-paying stocks), return the single best public URL to its official logo.
 
 Requirements:
 - Prefer PNG or SVG with transparent background.
@@ -148,12 +147,13 @@ async function downloadAndValidate(url) {
 }
 
 // ── Main ────────────────────────────────────────────────────────────────────
-console.log(`[bulk-logos] SPINE size: ${SPINE.length}. Force: ${force}.`)
+const tickers = CASHFLOW_UNIVERSE.map((e) => e.ticker)
+console.log(`[bulk-logos:cashflow] Universe size: ${tickers.length}. Force: ${force}.`)
 
 // 1. Find tickers we still need to fetch
 const needFetch = []
 const skipped = []
-for (const ticker of SPINE) {
+for (const ticker of tickers) {
   const safe = safeTicker(ticker)
   const existing = existingLogoFile(safe)
   if (existing && !force) {
@@ -162,15 +162,15 @@ for (const ticker of SPINE) {
   }
   needFetch.push(ticker)
 }
-console.log(`[bulk-logos] Skipping ${skipped.length} (already present). Fetching ${needFetch.length}.`)
+console.log(`[bulk-logos:cashflow] Skipping ${skipped.length} (already present). Fetching ${needFetch.length}.`)
 
 if (needFetch.length === 0) {
-  console.log('[bulk-logos] Nothing to do. Exiting.')
+  console.log('[bulk-logos:cashflow] Nothing to do. Exiting.')
   process.exit(0)
 }
 
 // 2. Resolve domains via Yahoo for the ones we need
-console.log('[bulk-logos] Resolving company domains via Yahoo…')
+console.log('[bulk-logos:cashflow] Resolving company domains via Yahoo…')
 const domainResolved = await Promise.all(
   needFetch.map(async (ticker) => {
     const info = await fetchDomainFromYahoo(ticker)
@@ -183,7 +183,7 @@ const geminiSuggestions = new Map() // ticker → URL
 const chunkSize = 10
 for (let i = 0; i < domainResolved.length; i += chunkSize) {
   const chunk = domainResolved.slice(i, i + chunkSize)
-  console.log(`[bulk-logos] Gemini chunk ${i / chunkSize + 1}/${Math.ceil(domainResolved.length / chunkSize)} (${chunk.length} tickers)…`)
+  console.log(`[bulk-logos:cashflow] Gemini chunk ${i / chunkSize + 1}/${Math.ceil(domainResolved.length / chunkSize)} (${chunk.length} tickers)…`)
   const suggestions = await fetchLogoSuggestions(chunk)
   for (const s of suggestions) {
     if (s.ticker && s.logoUrl) geminiSuggestions.set(s.ticker.toUpperCase(), s.logoUrl)
@@ -210,7 +210,7 @@ for (const item of domainResolved) {
       const fileName = `${safe}.${ext}`
       const filePath = resolve(logosDir, fileName)
       writeFileSync(filePath, buf)
-      console.log(`[bulk-logos] ✓ ${item.ticker} → ${fileName} (${buf.length}B from ${url.slice(0, 60)})`)
+      console.log(`[bulk-logos:cashflow] ✓ ${item.ticker} → ${fileName} (${buf.length}B from ${url.slice(0, 60)})`)
       successes.push(item.ticker)
       saved = true
       break
@@ -220,7 +220,7 @@ for (const item of domainResolved) {
   }
   if (!saved) {
     failures.push({ ticker: item.ticker, reason: `all ${candidates.length} candidates failed` })
-    console.warn(`[bulk-logos] ✗ ${item.ticker}: all candidates failed`)
+    console.warn(`[bulk-logos:cashflow] ✗ ${item.ticker}: all candidates failed`)
   }
 }
 
@@ -231,15 +231,15 @@ if (successes.length > 0) {
 
 // 6. Summary
 console.log('')
-console.log(`[bulk-logos] DONE.`)
+console.log(`[bulk-logos:cashflow] DONE.`)
 console.log(`  Skipped existing: ${skipped.length}`)
 console.log(`  Successfully fetched: ${successes.length}`)
 console.log(`  Failed: ${failures.length}`)
 if (failures.length > 0) {
   console.log('')
-  console.log('[bulk-logos] Failed tickers (fix manually with update-logo.mjs):')
+  console.log('[bulk-logos:cashflow] Failed tickers (fix manually with update-logo.mjs):')
   for (const f of failures) console.log(`  - ${f.ticker}: ${f.reason}`)
 }
 console.log('')
-console.log('[bulk-logos] Next steps:')
-console.log('  git add public/logos/ && git commit -m "logos: backfill SPINE" && git push')
+console.log('[bulk-logos:cashflow] Next steps:')
+console.log('  git add public/logos/ && git commit -m "logos: backfill cashflow" && git push')

@@ -15,6 +15,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { spawnSync } from 'node:child_process'
 
 const [, , tickerArg, urlArg] = process.argv
 if (!tickerArg || !urlArg) {
@@ -72,6 +73,8 @@ const filePath = resolve(logosDir, fileName)
 mkdirSync(logosDir, { recursive: true })
 writeFileSync(filePath, buf)
 console.log(`[update-logo] wrote ${buf.length}B → ${filePath}`)
+
+spawnSync('node', [resolve(projectRoot, 'scripts', 'regenerate-logo-manifest.mjs')], { stdio: 'inherit' })
 
 console.log('')
 console.log('[update-logo] done.')

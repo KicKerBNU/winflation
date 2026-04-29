@@ -13,6 +13,11 @@ export interface CashflowDistribution {
   amount: number // in pick currency
 }
 
+export interface CashflowPriceCandle {
+  date: string  // ISO YYYY-MM-DD (month-end close)
+  close: number // in pick currency
+}
+
 export interface CashflowPick {
   rank: number
   ticker: string
@@ -41,8 +46,10 @@ export interface CashflowPick {
   lastDividendAmount: number | null
   nextExDividendDate: string | null  // next scheduled ex-div (if known) ISO
   nextPaymentDate: string | null     // next scheduled payment date ISO
-  // History (trailing 12 months)
+  // History (up to trailing 5 years; will be shorter for younger tickers)
   recentDistributions: CashflowDistribution[]
+  // Up to 60 monthly closes (trailing 5y); shorter when listing is younger
+  priceHistory: CashflowPriceCandle[]
   // ETF-only fields
   expenseRatio?: number | null
 }

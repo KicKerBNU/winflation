@@ -4,11 +4,14 @@
 // Flow:
 //   1. Curated universe (cashflow-universe.mjs) — ~30 tickers, hand-picked.
 //   2. Yahoo Finance enriches each: quote, summaryDetail, summaryProfile,
-//      calendarEvents, defaultKeyStatistics, plus chart() for trailing 12mo
-//      dividend events (used to verify monthly cadence + collect dates).
-//   3. Drop tickers that didn't pay >= 10 dividends in the trailing 12 months
-//      (allow 1-2 missed months for plain-vanilla "monthly" stocks; some
-//      extend their ex-div schedule by a few weeks each year).
+//      calendarEvents, defaultKeyStatistics, plus chart() over a 5-year window
+//      (interval 1mo, events: dividends) to capture both 60 monthly closes for
+//      the price-evolution chart and the full dividend stream for cadence
+//      verification + the trailing-5y payments list.
+//   3. Drop tickers that didn't pay 9-17 dividends in the trailing 12 months
+//      (allow 1-2 missed months for plain-vanilla "monthly" stocks; upper
+//      bound 17 covers monthly payers with quarterly supplementals like
+//      MAIN). Quarterly payers still get rejected (4-5 events/year).
 //   4. Risk tier is assigned deterministically from assetClass:
 //        equity-reit / etf / stock         → low
 //        bdc / energy-infra                → medium
@@ -61,6 +64,8 @@ const LOGO_INDEX = buildLogoIndex()
 const today = new Date()
 const todayStr = today.toISOString().split('T')[0]
 const oneYearAgo = new Date(today.getTime() - 365 * 24 * 60 * 60 * 1000)
+const fiveYearsAgo = new Date(today.getTime() - 5 * 365 * 24 * 60 * 60 * 1000)
+const oneYearAgoIso = oneYearAgo.toISOString().slice(0, 10)
 
 // ── Risk-tier assignment (deterministic from asset class) ─────────────────
 const RISK_BY_CLASS = {
@@ -144,21 +149,24 @@ function toIsoDate(d) {
   return t.toISOString().slice(0, 10)
 }
 
-async function fetchTrailingDistributions(ticker) {
-  // Yahoo chart() returns dividend events between period1 and period2.
-  // We use it to (a) verify monthly cadence and (b) capture last 12 dates.
+async function fetchHistory(ticker) {
+  // Yahoo chart() with a 5y window + DAILY interval. Daily is required because
+  // interval=1mo silently drops some dividend events near the recent end of a
+  // 5y window (observed for MAIN, GAIN). We then downsample the ~1260 daily
+  // candles to one close per calendar month for the price-evolution chart.
   try {
     const result = await yahooFinance.chart(ticker, {
-      period1: oneYearAgo,
+      period1: fiveYearsAgo,
       period2: today,
-      interval: '1mo',
+      interval: '1d',
       events: 'dividends',
     })
+
     const events = result?.events ?? {}
-    const list = Array.isArray(events?.dividends)
+    const divList = Array.isArray(events?.dividends)
       ? events.dividends
       : Object.values(events?.dividends ?? {})
-    const distributions = list
+    const distributions = divList
       .map((ev) => {
         const ts = typeof ev.date === 'number' ? ev.date * 1000 : new Date(ev.date).getTime()
         return {
@@ -168,18 +176,44 @@ async function fetchTrailingDistributions(ticker) {
       })
       .filter((d) => d.amount > 0)
       .sort((a, b) => a.date.localeCompare(b.date))
-    return distributions
+
+    // Downsample daily candles to one entry per year-month, keeping the last
+    // close of each month (most recent trading day in that month).
+    const quotes = Array.isArray(result?.quotes) ? result.quotes : []
+    const monthly = new Map() // 'YYYY-MM' -> { date, close }
+    for (const q of quotes) {
+      const ts = q.date instanceof Date ? q.date.getTime() : new Date(q.date).getTime()
+      const close = q.close ?? q.adjclose ?? null
+      if (!Number.isFinite(close) || close <= 0) continue
+      const iso = new Date(ts).toISOString().slice(0, 10)
+      const key = iso.slice(0, 7)
+      const prev = monthly.get(key)
+      if (!prev || iso > prev.date) {
+        monthly.set(key, { date: iso, close: +(+close).toFixed(4) })
+      }
+    }
+    const priceHistory = [...monthly.values()].sort((a, b) => a.date.localeCompare(b.date))
+
+    return { distributions, priceHistory }
   } catch (err) {
     console.warn(`[yahoo:chart] ${ticker}: ${err.message?.split('\n')[0] ?? err}`)
-    return []
+    return { distributions: [], priceHistory: [] }
   }
 }
 
+function trailingTwelveMonths(distributions) {
+  return distributions.filter((d) => d.date >= oneYearAgoIso)
+}
+
 function isMonthly(distributions) {
-  // Allow 9-14 payments in trailing 12 months. Lower bound 9 because Yahoo's
+  // Allow 9-17 payments in trailing 12 months. Lower bound 9 because Yahoo's
   // chart() endpoint occasionally misses 1-3 dividend events near the period
-  // boundary; quarterly payers still get rejected (they top out at 4-5).
-  return distributions.length >= 9 && distributions.length <= 14
+  // boundary. Upper bound 17 captures monthly-cadence names that also pay
+  // supplemental/enhanced dividends quarterly (e.g. MAIN: 12 monthlies + 4
+  // supplementals = 16/year). Quarterly payers still get rejected (they top
+  // out at 4-5).
+  const t12 = trailingTwelveMonths(distributions)
+  return t12.length >= 9 && t12.length <= 17
 }
 
 // ── Main flow ────────────────────────────────────────────────────────────
@@ -192,8 +226,8 @@ const enriched = await Promise.all(
       console.warn(`[enrich] ${entry.ticker}: no quote — dropping.`)
       return null
     }
-    const distributions = await fetchTrailingDistributions(entry.ticker)
-    return { entry, quote, distributions }
+    const { distributions, priceHistory } = await fetchHistory(entry.ticker)
+    return { entry, quote, distributions, priceHistory }
   }),
 )
 
@@ -201,10 +235,11 @@ const present = enriched.filter((c) => c !== null)
 console.log(`[enrich] Got quotes for ${present.length}/${CASHFLOW_UNIVERSE.length}.`)
 
 const monthly = present.filter((c) => isMonthly(c.distributions))
-console.log(`[verify] ${monthly.length}/${present.length} pay 10-14 distributions in trailing 12 months.`)
+console.log(`[verify] ${monthly.length}/${present.length} pay 9-17 distributions in trailing 12 months.`)
 const dropped = present.filter((c) => !isMonthly(c.distributions))
 for (const d of dropped) {
-  console.log(`  - dropped ${d.entry.ticker}: ${d.distributions.length} distributions in trailing 12mo`)
+  const t12 = trailingTwelveMonths(d.distributions).length
+  console.log(`  - dropped ${d.entry.ticker}: ${t12} distributions in trailing 12mo (${d.distributions.length} in 5y)`)
 }
 
 if (monthly.length === 0) {
@@ -216,7 +251,8 @@ const sorted = [...monthly].sort((a, b) => b.quote.dividendYield - a.quote.divid
 
 const picks = sorted.map((c, i) => {
   const lastDist = c.distributions[c.distributions.length - 1] ?? null
-  const trailingTotal = c.distributions.reduce((s, d) => s + d.amount, 0)
+  const t12 = trailingTwelveMonths(c.distributions)
+  const trailingTotal = t12.reduce((s, d) => s + d.amount, 0)
   // Prefer Yahoo's reported annualDividend; fall back to TTM sum if absent
   const annualDividend = c.quote.annualDividend > 0 ? c.quote.annualDividend : +trailingTotal.toFixed(4)
   // Recompute yield from price+annual when Yahoo's yield is 0 but the stock pays
@@ -242,7 +278,7 @@ const picks = sorted.map((c, i) => {
     priceChangePercent: c.quote.priceChangePercent,
     annualDividend,
     dividendYield,
-    paymentFrequency: c.distributions.length,
+    paymentFrequency: t12.length,
     assetClass: c.entry.assetClass,
     riskTier: RISK_BY_CLASS[c.entry.assetClass] ?? 'medium',
     lastDividendDate: lastDist?.date ?? c.quote.lastExDividendDate ?? null,
@@ -250,6 +286,7 @@ const picks = sorted.map((c, i) => {
     nextExDividendDate: c.quote.nextExDividendDate ?? null,
     nextPaymentDate: c.quote.nextPaymentDate ?? null,
     recentDistributions: c.distributions,
+    priceHistory: c.priceHistory,
     expenseRatio: c.quote.expenseRatio ?? null,
   }
 })

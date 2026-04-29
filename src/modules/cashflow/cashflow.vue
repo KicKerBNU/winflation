@@ -2,6 +2,7 @@
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { useCashflowStore } from './store/cashflow.store'
+import { getLogoUrl } from '@/services/logoManifest'
 import type { CashflowPick, RiskTier, AssetClass } from './domain/cashflow.types'
 
 const { t, locale } = useI18n()
@@ -264,8 +265,8 @@ function routeFor(ticker: string) {
             <div class="flex items-start gap-3">
               <div class="flex h-12 w-12 flex-shrink-0 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-white p-1.5 dark:border-gray-700 dark:bg-gray-800">
                 <img
-                  v-if="p.logoUrl"
-                  :src="p.logoUrl"
+                  v-if="getLogoUrl(p.ticker)"
+                  :src="getLogoUrl(p.ticker)!"
                   :alt="p.company"
                   class="h-full w-full object-contain"
                   @error="($event.target as HTMLImageElement).style.display = 'none'"

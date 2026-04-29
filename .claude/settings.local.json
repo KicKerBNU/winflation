@@ -99,7 +99,13 @@
       "Bash(node --env-file=.env.local /Users/evertonbuzzi/Dev/winflation.eu/scripts/generate-cashflow.mjs)",
       "Bash(grep -n \"P5 — Add MONTHLY\\\\|^| \\\\`ai-recommendation\\\\`\\\\|^| \\\\`minerals\\\\`\" /Users/evertonbuzzi/Dev/winflation.eu/README.md)",
       "Bash(grep -n \"scripts/$\\\\|generate-recommendations.mjs\\\\|## Firestore Security Rules\\\\|match /ai-recommendations\" /Users/evertonbuzzi/Dev/winflation.eu/README.md)",
-      "Bash(grep -n \"## Features\\\\|^| \\\\`ai-recommendation\\\\`\\\\|^| \\\\`minerals\\\\`\\\\|^| \\\\`auth\\\\`\\\\|^## Per-user Firestore\" /Users/evertonbuzzi/Dev/winflation.eu/CLAUDE.md)"
+      "Bash(grep -n \"## Features\\\\|^| \\\\`ai-recommendation\\\\`\\\\|^| \\\\`minerals\\\\`\\\\|^| \\\\`auth\\\\`\\\\|^## Per-user Firestore\" /Users/evertonbuzzi/Dev/winflation.eu/CLAUDE.md)",
+      "Bash(node --env-file=.env.local scripts/generate-cashflow.mjs)",
+      "Bash(node --env-file=.env.local scripts/_debug-tmp.mjs)",
+      "Bash(echo \"started, pid=$!\")",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:5174/cashflow/MAIN)",
+      "Bash(node --env-file=.env.local scripts/bulk-fetch-cashflow-logos.mjs)",
+      "Bash(node scripts/regenerate-logo-manifest.mjs)"
     ],
     "additionalDirectories": [
       "/tmp",
