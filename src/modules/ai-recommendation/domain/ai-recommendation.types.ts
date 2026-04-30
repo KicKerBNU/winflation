@@ -65,6 +65,10 @@ export interface AiCompanyBase {
   qualifyingTier?: QualityTier
   qualifyingTierLabel?: string
   metrics?: CompanyMetrics
+  lastDividendAmount?: number | null
+  nextExDividendDate?: string | null
+  nextPaymentDate?: string | null
+  paymentFrequency?: number | null
 }
 
 export interface AiCompanyCard extends AiCompanyBase {

@@ -1,8 +1,8 @@
-// Weekly Cashflow pipeline — monthly-paying instruments accessible to EU
+// Weekly Monthly DY pipeline — monthly-paying instruments accessible to EU
 // retail investors.
 //
 // Flow:
-//   1. Curated universe (cashflow-universe.mjs) — ~30 tickers, hand-picked.
+//   1. Curated universe (monthly-dy-universe.mjs) — ~30 tickers, hand-picked.
 //   2. Yahoo Finance enriches each: quote, summaryDetail, summaryProfile,
 //      calendarEvents, defaultKeyStatistics, plus chart() over a 5-year window
 //      (interval 1mo, events: dividends) to capture both 60 monthly closes for
@@ -16,7 +16,7 @@
 //        equity-reit / etf / stock         → low
 //        bdc / energy-infra                → medium
 //        mortgage-reit                     → high
-//   5. Persist to Firestore: cashflow/latest + cashflow/<YYYY-MM-DD>.
+//   5. Persist to Firestore: monthly-dy/latest + monthly-dy/<YYYY-MM-DD>.
 
 import { initializeApp, cert } from 'firebase-admin/app'
 import { getFirestore } from 'firebase-admin/firestore'
@@ -24,7 +24,7 @@ import YahooFinance from 'yahoo-finance2'
 import { readdirSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { CASHFLOW_UNIVERSE } from './cashflow-universe.mjs'
+import { MONTHLY_DY_UNIVERSE } from './monthly-dy-universe.mjs'
 
 const yahooFinance = new YahooFinance({ suppressNotices: ['yahooSurvey'] })
 
@@ -217,10 +217,10 @@ function isMonthly(distributions) {
 }
 
 // ── Main flow ────────────────────────────────────────────────────────────
-console.log(`[${todayStr}] Cashflow pipeline starting. Universe size: ${CASHFLOW_UNIVERSE.length}.`)
+console.log(`[${todayStr}] Monthly DY pipeline starting. Universe size: ${MONTHLY_DY_UNIVERSE.length}.`)
 
 const enriched = await Promise.all(
-  CASHFLOW_UNIVERSE.map(async (entry) => {
+  MONTHLY_DY_UNIVERSE.map(async (entry) => {
     const quote = await fetchYahooQuote(entry.ticker)
     if (!quote) {
       console.warn(`[enrich] ${entry.ticker}: no quote — dropping.`)
@@ -232,7 +232,7 @@ const enriched = await Promise.all(
 )
 
 const present = enriched.filter((c) => c !== null)
-console.log(`[enrich] Got quotes for ${present.length}/${CASHFLOW_UNIVERSE.length}.`)
+console.log(`[enrich] Got quotes for ${present.length}/${MONTHLY_DY_UNIVERSE.length}.`)
 
 const monthly = present.filter((c) => isMonthly(c.distributions))
 console.log(`[verify] ${monthly.length}/${present.length} pay 9-17 distributions in trailing 12 months.`)
@@ -298,16 +298,16 @@ const riskDistribution = picks.reduce((acc, p) => {
 
 const payload = {
   generatedAt: new Date().toISOString(),
-  universeSize: CASHFLOW_UNIVERSE.length,
+  universeSize: MONTHLY_DY_UNIVERSE.length,
   qualifiedCount: picks.length,
   riskDistribution,
   picks,
 }
 
-await db.collection('cashflow').doc('latest').set(payload)
-await db.collection('cashflow').doc(todayStr).set(payload)
+await db.collection('monthly-dy').doc('latest').set(payload)
+await db.collection('monthly-dy').doc(todayStr).set(payload)
 
 console.log(
-  `[${new Date().toISOString()}] Saved cashflow/latest + cashflow/${todayStr}. ${picks.length} picks. Risk: L=${riskDistribution.low ?? 0} M=${riskDistribution.medium ?? 0} H=${riskDistribution.high ?? 0}.`,
+  `[${new Date().toISOString()}] Saved monthly-dy/latest + monthly-dy/${todayStr}. ${picks.length} picks. Risk: L=${riskDistribution.low ?? 0} M=${riskDistribution.medium ?? 0} H=${riskDistribution.high ?? 0}.`,
 )
 console.log(`Top by yield: ${picks[0].company} @ ${picks[0].dividendYield}%`)

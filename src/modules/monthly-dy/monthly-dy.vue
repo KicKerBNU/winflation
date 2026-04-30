@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
-import { useCashflowStore } from './store/cashflow.store'
+import { useMonthlyDyStore } from './store/monthly-dy.store'
 import { getLogoUrl } from '@/services/logoManifest'
-import type { CashflowPick, RiskTier, AssetClass } from './domain/cashflow.types'
+import type { MonthlyDyPick, RiskTier, AssetClass } from './domain/monthly-dy.types'
 
 const { t, locale } = useI18n()
-const store = useCashflowStore()
+const store = useMonthlyDyStore()
 
 store.init()
 
@@ -23,7 +23,7 @@ const formattedDate = computed(() => {
   })
 })
 
-const filtered = computed<CashflowPick[]>(() => {
+const filtered = computed<MonthlyDyPick[]>(() => {
   const q = search.value.trim().toLowerCase()
   let list = store.picks.filter((p) => {
     if (p.dividendYield < minYield.value) return false
@@ -90,47 +90,47 @@ function formatDate(iso: string | null): string {
 
 const riskConfig: Record<RiskTier, { label: string; pill: string; icon: string }> = {
   low: {
-    label: 'cashflow.riskLow',
+    label: 'monthlyDy.riskLow',
     pill: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-900/30 dark:text-emerald-300',
     icon: 'shield-halved',
   },
   medium: {
-    label: 'cashflow.riskMedium',
+    label: 'monthlyDy.riskMedium',
     pill: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800/40 dark:bg-amber-900/30 dark:text-amber-300',
     icon: 'shield-halved',
   },
   high: {
-    label: 'cashflow.riskHigh',
+    label: 'monthlyDy.riskHigh',
     pill: 'border-red-200 bg-red-50 text-red-700 dark:border-red-800/40 dark:bg-red-900/30 dark:text-red-300',
     icon: 'triangle-exclamation',
   },
 }
 
 const assetClassLabel: Record<AssetClass, string> = {
-  'equity-reit': 'cashflow.assetEquityReit',
-  'mortgage-reit': 'cashflow.assetMortgageReit',
-  'bdc': 'cashflow.assetBdc',
-  'energy-infra': 'cashflow.assetEnergyInfra',
-  'stock': 'cashflow.assetStock',
-  'etf': 'cashflow.assetEtf',
+  'equity-reit': 'monthlyDy.assetEquityReit',
+  'mortgage-reit': 'monthlyDy.assetMortgageReit',
+  'bdc': 'monthlyDy.assetBdc',
+  'energy-infra': 'monthlyDy.assetEnergyInfra',
+  'stock': 'monthlyDy.assetStock',
+  'etf': 'monthlyDy.assetEtf',
 }
 
-function exDivChip(p: CashflowPick): { text: string; tone: 'live' | 'soon' | 'idle' | 'none' } {
+function exDivChip(p: MonthlyDyPick): { text: string; tone: 'live' | 'soon' | 'idle' | 'none' } {
   const days = daysUntil(p.nextExDividendDate)
-  if (days === null) return { text: t('cashflow.nextExDividendUnknown'), tone: 'none' }
-  if (days === 0) return { text: t('cashflow.nextExDividendToday'), tone: 'live' }
+  if (days === null) return { text: t('monthlyDy.nextExDividendUnknown'), tone: 'none' }
+  if (days === 0) return { text: t('monthlyDy.nextExDividendToday'), tone: 'live' }
   if (days < 0) {
     // Past — show last paid instead
     return p.lastDividendDate
-      ? { text: t('cashflow.lastDividendOn', { date: formatDate(p.lastDividendDate) }), tone: 'idle' }
-      : { text: t('cashflow.nextExDividendUnknown'), tone: 'none' }
+      ? { text: t('monthlyDy.lastDividendOn', { date: formatDate(p.lastDividendDate) }), tone: 'idle' }
+      : { text: t('monthlyDy.nextExDividendUnknown'), tone: 'none' }
   }
-  if (days <= 14) return { text: t('cashflow.nextExDividendIn', { days }), tone: 'soon' }
-  return { text: t('cashflow.nextExDividendOn', { date: formatDate(p.nextExDividendDate) }), tone: 'idle' }
+  if (days <= 14) return { text: t('monthlyDy.nextExDividendIn', { days }), tone: 'soon' }
+  return { text: t('monthlyDy.nextExDividendOn', { date: formatDate(p.nextExDividendDate) }), tone: 'idle' }
 }
 
 function routeFor(ticker: string) {
-  return { name: 'cashflow-detail', params: { ticker: encodeURIComponent(ticker) } }
+  return { name: 'monthly-dy-detail', params: { ticker: encodeURIComponent(ticker) } }
 }
 </script>
 
@@ -142,16 +142,16 @@ function routeFor(ticker: string) {
       <header class="mb-8">
         <div class="inline-flex items-center gap-2 rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-widest text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300">
           <FontAwesomeIcon icon="calendar" class="text-[10px]" />
-          <span>{{ t('cashflow.refreshesWeekly') }}</span>
+          <span>{{ t('monthlyDy.refreshesWeekly') }}</span>
           <template v-if="formattedDate">
-            · <span>{{ t('cashflow.updatedAt', { date: formattedDate }) }}</span>
+            · <span>{{ t('monthlyDy.updatedAt', { date: formattedDate }) }}</span>
           </template>
         </div>
         <h1 class="mt-3 text-3xl font-bold tracking-tight text-gray-900 sm:text-4xl dark:text-white">
-          {{ t('cashflow.title') }}
+          {{ t('monthlyDy.title') }}
         </h1>
         <p class="mt-2 max-w-3xl text-sm text-gray-500 sm:text-base dark:text-gray-400">
-          {{ t('cashflow.subtitle') }}
+          {{ t('monthlyDy.subtitle') }}
         </p>
       </header>
 
@@ -159,7 +159,7 @@ function routeFor(ticker: string) {
       <div class="mb-6 flex flex-col gap-3 lg:flex-row lg:items-end lg:gap-4">
         <!-- Search -->
         <label class="block flex-1">
-          <span class="sr-only">{{ t('cashflow.searchPlaceholder') }}</span>
+          <span class="sr-only">{{ t('monthlyDy.searchPlaceholder') }}</span>
           <div class="relative">
             <FontAwesomeIcon
               icon="magnifying-glass"
@@ -168,7 +168,7 @@ function routeFor(ticker: string) {
             <input
               v-model="search"
               type="search"
-              :placeholder="t('cashflow.searchPlaceholder')"
+              :placeholder="t('monthlyDy.searchPlaceholder')"
               class="block w-full rounded-lg border border-gray-300 bg-white py-2 pl-9 pr-3 text-sm text-gray-900 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
             />
           </div>
@@ -177,7 +177,7 @@ function routeFor(ticker: string) {
         <!-- Yield filter -->
         <label class="block lg:w-72">
           <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            {{ minYield > 0 ? t('cashflow.yieldFilterLabel') + ` ≥ ${minYield}%` : t('cashflow.yieldFilterAll') }}
+            {{ minYield > 0 ? t('monthlyDy.yieldFilterLabel') + ` ≥ ${minYield}%` : t('monthlyDy.yieldFilterAll') }}
           </span>
           <input
             v-model.number="minYield"
@@ -192,16 +192,16 @@ function routeFor(ticker: string) {
         <!-- Sort -->
         <label class="block lg:w-56">
           <span class="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-            {{ t('cashflow.sortLabel') }}
+            {{ t('monthlyDy.sortLabel') }}
           </span>
           <select
             v-model="sortMode"
             class="block w-full cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 transition-colors focus:border-emerald-500 focus:outline-none focus:ring-1 focus:ring-emerald-500 dark:border-gray-700 dark:bg-gray-800 dark:text-white"
           >
-            <option value="yield-desc">{{ t('cashflow.sortYieldDesc') }}</option>
-            <option value="yield-asc">{{ t('cashflow.sortYieldAsc') }}</option>
-            <option value="market-cap">{{ t('cashflow.sortMarketCap') }}</option>
-            <option value="risk">{{ t('cashflow.sortRisk') }}</option>
+            <option value="yield-desc">{{ t('monthlyDy.sortYieldDesc') }}</option>
+            <option value="yield-asc">{{ t('monthlyDy.sortYieldAsc') }}</option>
+            <option value="market-cap">{{ t('monthlyDy.sortMarketCap') }}</option>
+            <option value="risk">{{ t('monthlyDy.sortRisk') }}</option>
           </select>
         </label>
       </div>
@@ -223,12 +223,12 @@ function routeFor(ticker: string) {
         class="flex flex-col items-center justify-center rounded-2xl border border-dashed border-gray-300 bg-white py-16 text-center dark:border-gray-700 dark:bg-gray-900"
       >
         <FontAwesomeIcon icon="calendar" class="mb-3 text-2xl text-gray-300" />
-        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ t('cashflow.empty') }}</p>
+        <p class="text-sm font-medium text-gray-600 dark:text-gray-400">{{ t('monthlyDy.empty') }}</p>
       </div>
 
       <template v-else>
         <p class="mb-3 text-xs uppercase tracking-widest text-gray-400">
-          {{ t('cashflow.pickCount', { count: filtered.length }) }}
+          {{ t('monthlyDy.pickCount', { count: filtered.length }) }}
         </p>
 
         <div class="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -288,16 +288,16 @@ function routeFor(ticker: string) {
             <!-- Yield + facts -->
             <div class="mt-4 flex items-end justify-between border-t border-gray-100 pt-3 dark:border-gray-800">
               <div>
-                <div class="text-[10px] uppercase tracking-wider text-gray-400">{{ t('cashflow.yieldLabel') }}</div>
+                <div class="text-[10px] uppercase tracking-wider text-gray-400">{{ t('monthlyDy.yieldLabel') }}</div>
                 <div class="text-3xl font-bold tabular-nums text-emerald-600 dark:text-emerald-400">
                   {{ p.dividendYield.toFixed(2) }}<span class="text-base text-gray-400">%</span>
                 </div>
                 <div class="text-[11px] text-gray-500 dark:text-gray-400">
-                  {{ formatPrice(p.annualDividend, p.currency) }} / yr · {{ t('cashflow.paymentsPerYear', { n: p.paymentFrequency }) }}
+                  {{ formatPrice(p.annualDividend, p.currency) }} / yr · {{ t('monthlyDy.paymentsPerYear', { n: p.paymentFrequency }) }}
                 </div>
               </div>
               <div class="text-right">
-                <div class="text-[10px] uppercase tracking-wider text-gray-400">{{ t('cashflow.marketCap') }}</div>
+                <div class="text-[10px] uppercase tracking-wider text-gray-400">{{ t('monthlyDy.marketCap') }}</div>
                 <div class="text-sm font-semibold text-gray-700 dark:text-gray-300">{{ formatMarketCap(p.marketCap, p.currency) }}</div>
                 <div class="text-[11px] text-gray-400">{{ formatPrice(p.currentPrice, p.currency) }}</div>
               </div>

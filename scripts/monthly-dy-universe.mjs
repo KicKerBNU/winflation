@@ -8,13 +8,13 @@
 // CEFs, MLPs (quarterly anyway), bonds.
 //
 // `assetClass` drives the deterministic risk-tier assignment in
-// generate-cashflow.mjs. Edit this file when adding/removing tickers.
+// generate-monthly-dy.mjs. Edit this file when adding/removing tickers.
 //
 // Maintenance: review monthly. Drop names that have cut distributions or moved
 // off monthly schedule. Add new monthly-payers when they establish a track
 // record (≥ 12 months on monthly cadence).
 
-export const CASHFLOW_UNIVERSE = [
+export const MONTHLY_DY_UNIVERSE = [
   // ── US Equity REITs (low risk: established, blue-chip property cash flows) ──
   { ticker: 'O',     assetClass: 'equity-reit', notes: 'Realty Income — net-lease retail/industrial REIT, "The Monthly Dividend Company"' },
   { ticker: 'STAG',  assetClass: 'equity-reit', notes: 'STAG Industrial — single-tenant industrial' },
@@ -59,5 +59,5 @@ export const CASHFLOW_UNIVERSE = [
 ]
 
 export function tickersOnly() {
-  return CASHFLOW_UNIVERSE.map((u) => u.ticker)
+  return MONTHLY_DY_UNIVERSE.map((u) => u.ticker)
 }

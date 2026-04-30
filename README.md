@@ -126,17 +126,17 @@ Phase 2 data (per-company 5-year history) is fetched in parallel from Gemini aft
 
 ---
 
-### Cashflow
+### Monthly DY
 
 A separate strand for **monthly-income investors** — tools who want predictable cash-flow rather than the (mostly) quarterly EU dividend picks.
 
-**List page (`/cashflow`)**
+**List page (`/monthly-dy`)**
 
 - 30 hand-curated, monthly-paying instruments accessible to EU retail brokerages: US-listed equity REITs (O, STAG, ADC, EPR, …), BDCs (MAIN, GAIN, PSEC, …), mortgage REITs (AGNC, DX, ORC, …), Canadian REITs (TSX `*-UN.TO`), select Canadian dividend stocks. UCITS-restricted US ETFs (JEPI, QYLD) intentionally excluded.
 - Filters: live name/ticker search + minimum-yield slider (0–20%) + sort by yield asc/desc, market cap, or risk tier.
 - Each card shows: 3-tier risk badge (Low / Medium / High — deterministic from asset class), live ex-dividend chip ("Pays in 8 days" / "Goes ex-dividend today" / "Next ex-div 12 May"), nominal yield with annual amount + payments-per-year, market cap.
 
-**Detail page (`/cashflow/:ticker`)**
+**Detail page (`/monthly-dy/:ticker`)**
 
 - Header with logo, risk badge, asset-class label, ticker, country, sector, exchange, follow button.
 - "Beats your inflation" block (logged-in users with tax country set — reused from AI Picks).
@@ -146,13 +146,13 @@ A separate strand for **monthly-income investors** — tools who want predictabl
 - **Distributions trailing 12 months** — full list of every dividend with date and amount, rendered as a horizontal bar chart so users can see if distributions have been stable or have varied month to month.
 - WHT chip showing statutory + treaty rate from the pick's source country to the user's tax country (reuses the WHT data table from Settings).
 
-**Pipeline (`scripts/generate-cashflow.mjs`)**
+**Pipeline (`scripts/generate-monthly-dy.mjs`)**
 
-- Reads curated universe from `scripts/cashflow-universe.mjs` (each entry tagged with `assetClass` for deterministic risk-tier assignment).
+- Reads curated universe from `scripts/monthly-dy-universe.mjs` (each entry tagged with `assetClass` for deterministic risk-tier assignment).
 - Yahoo Finance enriches each ticker with quote, summary, calendar events, and trailing-12-month dividend history.
 - Verifies the monthly cadence: drops anything with fewer than 9 or more than 14 distributions in the last 12 months — catches names that have moved off monthly schedules (Pembina Pipeline went quarterly in 2022, Annaly went quarterly in 2017).
-- Writes `cashflow/latest` and `cashflow/<YYYY-MM-DD>` snapshots.
-- Runs **weekly** via `.github/workflows/cashflow-weekly.yml` (Mondays at 03:00 UTC).
+- Writes `monthly-dy/latest` and `monthly-dy/<YYYY-MM-DD>` snapshots.
+- Runs **weekly** via `.github/workflows/monthly-dy-weekly.yml` (Mondays at 03:00 UTC).
 
 ---
 
@@ -228,15 +228,15 @@ src/
 
 scripts/
 ├── eu-dividend-universe.mjs       # Curated ~55-ticker spine list (AI Picks)
-├── cashflow-universe.mjs          # Curated ~30-ticker monthly-payer list (Cashflow)
+├── monthly-dy-universe.mjs          # Curated ~30-ticker monthly-payer list (Monthly DY)
 ├── generate-recommendations.mjs   # Daily Gemini → Firestore job (AI Picks cron)
-├── generate-cashflow.mjs          # Weekly Yahoo → Firestore job (Cashflow cron)
+├── generate-monthly-dy.mjs          # Weekly Yahoo → Firestore job (Monthly DY cron)
 ├── bulk-fetch-spine-logos.mjs     # One-time bulk logo backfill into public/logos/
 └── update-logo.mjs                # One-off logo replacement for a single ticker
 
 .github/workflows/
 ├── ai-daily-recommendations.yml   # Cron: 02:00 UTC daily (AI Picks)
-└── cashflow-weekly.yml            # Cron: 03:00 UTC Mondays (Cashflow)
+└── monthly-dy-weekly.yml            # Cron: 03:00 UTC Mondays (Monthly DY)
 ```
 
 ---
@@ -315,7 +315,7 @@ After running, **commit `public/logos/` and push** — Netlify rebuilds and serv
 
 ## Firestore Security Rules
 
-The `ai-recommendations` and `cashflow` collections are public read, no write:
+The `ai-recommendations` and `monthly-dy` collections are public read, no write:
 
 ```
 match /ai-recommendations/{doc} {
@@ -323,7 +323,7 @@ match /ai-recommendations/{doc} {
   allow write: if false;
 }
 
-match /cashflow/{doc} {
+match /monthly-dy/{doc} {
   allow read: if true;
   allow write: if false;
 }
@@ -341,8 +341,6 @@ match /users/{uid} {
 
 ## AI Recommendations — Roadmap / TODO
 
-Findings from a critical review of the AI Dividend Picks feature, ordered by severity. Tackle top to bottom.
-
-### P1 — Add MONTHLY Dividend strategy for Global markets
-
-- [ ] **Cashflow v2** ideas to consider: total-return view (price history alongside distribution history), distribution-coverage signal (FFO/AFFO for REITs, NII for BDCs), highlighting recent distribution cuts.
+1 - Improve dashboard, remove cards of countries tracked, stocks above ECB rate and card about beating inflation.
+2 - Add a carousel of the comming EX Dividends of the week, it can be related to the Monthly DY list, it can be related to AI Picks, lets discuss the best way to do this.
+3 - Refactor the T op Dividend Opportunities card, i want to display the ai-picks, like we have on the Lowest inflation countries we can display it with an auto scrolling marquee.

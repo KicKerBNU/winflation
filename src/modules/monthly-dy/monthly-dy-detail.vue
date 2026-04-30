@@ -3,7 +3,7 @@ import { computed, onMounted, onBeforeUnmount, ref, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useI18n } from 'vue-i18n'
 import { Chart, registerables } from 'chart.js'
-import { useCashflowStore } from './store/cashflow.store'
+import { useMonthlyDyStore } from './store/monthly-dy.store'
 import { useInflationStore } from '@/modules/inflation/store/inflation.store'
 import { useAuthStore } from '@/modules/auth/store/auth.store'
 import { useUserProfileStore } from '@/modules/auth/store/user-profile.store'
@@ -11,21 +11,21 @@ import { useThemeStore } from '@/modules/theme/store/theme.store'
 import { getWhtForPair } from '@/modules/settings/domain/withholding-rates'
 import { getLogoUrl } from '@/services/logoManifest'
 import FollowButton from '@/modules/follow/components/FollowButton.vue'
-import type { CashflowPick, RiskTier, AssetClass } from './domain/cashflow.types'
+import type { MonthlyDyPick, RiskTier, AssetClass } from './domain/monthly-dy.types'
 
 Chart.register(...registerables)
 
 const { t, locale } = useI18n()
 const route = useRoute()
 const router = useRouter()
-const store = useCashflowStore()
+const store = useMonthlyDyStore()
 const inflationStore = useInflationStore()
 const authStore = useAuthStore()
 const profileStore = useUserProfileStore()
 const themeStore = useThemeStore()
 
 const ticker = computed(() => decodeURIComponent(route.params.ticker as string))
-const pick = computed<CashflowPick | null>(
+const pick = computed<MonthlyDyPick | null>(
   () => store.picks.find((p) => p.ticker === ticker.value) ?? null,
 )
 const notFound = computed(() => !store.isLoading && store.hasData && !pick.value)
@@ -66,22 +66,22 @@ function daysUntil(iso: string | null): number | null {
 
 const riskConfig: Record<RiskTier, { label: string; desc: string; pill: string; iconColor: string; icon: string }> = {
   low: {
-    label: 'cashflow.riskLow',
-    desc: 'cashflow.riskLowDesc',
+    label: 'monthlyDy.riskLow',
+    desc: 'monthlyDy.riskLowDesc',
     pill: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-900/30 dark:text-emerald-300',
     iconColor: 'text-emerald-500 dark:text-emerald-400',
     icon: 'shield-halved',
   },
   medium: {
-    label: 'cashflow.riskMedium',
-    desc: 'cashflow.riskMediumDesc',
+    label: 'monthlyDy.riskMedium',
+    desc: 'monthlyDy.riskMediumDesc',
     pill: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800/40 dark:bg-amber-900/30 dark:text-amber-300',
     iconColor: 'text-amber-500 dark:text-amber-400',
     icon: 'shield-halved',
   },
   high: {
-    label: 'cashflow.riskHigh',
-    desc: 'cashflow.riskHighDesc',
+    label: 'monthlyDy.riskHigh',
+    desc: 'monthlyDy.riskHighDesc',
     pill: 'border-red-200 bg-red-50 text-red-700 dark:border-red-800/40 dark:bg-red-900/30 dark:text-red-300',
     iconColor: 'text-red-500 dark:text-red-400',
     icon: 'triangle-exclamation',
@@ -89,12 +89,12 @@ const riskConfig: Record<RiskTier, { label: string; desc: string; pill: string; 
 }
 
 const assetClassLabel: Record<AssetClass, string> = {
-  'equity-reit': 'cashflow.assetEquityReit',
-  'mortgage-reit': 'cashflow.assetMortgageReit',
-  'bdc': 'cashflow.assetBdc',
-  'energy-infra': 'cashflow.assetEnergyInfra',
-  'stock': 'cashflow.assetStock',
-  'etf': 'cashflow.assetEtf',
+  'equity-reit': 'monthlyDy.assetEquityReit',
+  'mortgage-reit': 'monthlyDy.assetMortgageReit',
+  'bdc': 'monthlyDy.assetBdc',
+  'energy-infra': 'monthlyDy.assetEnergyInfra',
+  'stock': 'monthlyDy.assetStock',
+  'etf': 'monthlyDy.assetEtf',
 }
 
 // ── Inflation badge (reuse user's tax country HICP) ────────────────────────
@@ -265,7 +265,7 @@ function buildPriceChart() {
     data: {
       datasets: [
         {
-          label: t('cashflow.priceLabel'),
+          label: t('monthlyDy.priceLabel'),
           data: linePoints,
           parsing: false,
           borderColor: lineColor,
@@ -278,7 +278,7 @@ function buildPriceChart() {
           order: 2,
         },
         {
-          label: t('cashflow.dividendMarkerLabel'),
+          label: t('monthlyDy.dividendMarkerLabel'),
           data: dividendPoints as unknown as { x: number; y: number }[],
           parsing: false,
           showLine: false,
@@ -309,11 +309,11 @@ function buildPriceChart() {
               const raw = ctx.raw as { x: number; y: number; _amount?: number }
               if (ctx.datasetIndex === 1 && raw._amount !== undefined) {
                 return [
-                  ` ${t('cashflow.dividendTooltipAmount', { amount: formatPrice(raw._amount, currency) })}`,
-                  ` ${t('cashflow.priceLabel')}: ${formatPrice(raw.y, currency)}`,
+                  ` ${t('monthlyDy.dividendTooltipAmount', { amount: formatPrice(raw._amount, currency) })}`,
+                  ` ${t('monthlyDy.priceLabel')}: ${formatPrice(raw.y, currency)}`,
                 ]
               }
-              return ` ${t('cashflow.priceLabel')}: ${formatPrice(raw.y, currency)}`
+              return ` ${t('monthlyDy.priceLabel')}: ${formatPrice(raw.y, currency)}`
             },
           },
         },
@@ -365,10 +365,10 @@ onBeforeUnmount(() => {
   <div class="p-4 pt-16 sm:px-6 sm:pb-6 lg:p-8">
     <button
       class="mb-6 flex cursor-pointer items-center gap-2 text-sm text-gray-500 transition-colors hover:text-emerald-600 dark:text-gray-400 dark:hover:text-emerald-400"
-      @click="router.push('/cashflow')"
+      @click="router.push('/monthly-dy')"
     >
       <FontAwesomeIcon icon="arrow-left" />
-      {{ t('cashflow.backToList') }}
+      {{ t('monthlyDy.backToList') }}
     </button>
 
     <div v-if="store.isLoading && !pick" class="space-y-4">
@@ -390,7 +390,7 @@ onBeforeUnmount(() => {
       class="rounded-2xl border border-dashed border-gray-300 bg-white py-12 text-center dark:border-gray-700 dark:bg-gray-900"
     >
       <FontAwesomeIcon icon="magnifying-glass" class="mb-3 text-2xl text-gray-300" />
-      <p class="text-sm text-gray-600 dark:text-gray-400">{{ t('cashflow.notFound') }}</p>
+      <p class="text-sm text-gray-600 dark:text-gray-400">{{ t('monthlyDy.notFound') }}</p>
     </div>
 
     <template v-else-if="pick">
@@ -414,7 +414,7 @@ onBeforeUnmount(() => {
               :class="riskConfig[pick.riskTier].pill"
             >
               <FontAwesomeIcon :icon="riskConfig[pick.riskTier].icon" class="text-[9px]" />
-              {{ t('cashflow.riskTitle') }}: {{ t(riskConfig[pick.riskTier].label) }}
+              {{ t('monthlyDy.riskTitle') }}: {{ t(riskConfig[pick.riskTier].label) }}
             </span>
             <span class="text-gray-400">·</span>
             <span>{{ t(assetClassLabel[pick.assetClass]) }}</span>
@@ -446,7 +446,7 @@ onBeforeUnmount(() => {
           :country-code="pick.countryCode ?? ''"
           :sector="pick.sector ?? ''"
           :exchange="pick.exchange ?? ''"
-          source="ai-pick"
+          source="monthly-dy"
         />
       </div>
 
@@ -457,10 +457,10 @@ onBeforeUnmount(() => {
       >
         <div class="mb-3 flex items-baseline justify-between gap-3">
           <h2 class="text-sm font-semibold text-gray-700 dark:text-gray-300">
-            {{ t('cashflow.priceHistoryTitle') }}
+            {{ t('monthlyDy.priceHistoryTitle') }}
           </h2>
           <span v-if="priceHistorySinceLabel" class="text-[11px] text-gray-400">
-            {{ t('cashflow.priceHistorySince', { date: priceHistorySinceLabel }) }}
+            {{ t('monthlyDy.priceHistorySince', { date: priceHistorySinceLabel }) }}
           </span>
         </div>
         <div class="relative h-64 sm:h-72">
@@ -511,25 +511,25 @@ onBeforeUnmount(() => {
       <!-- Key metrics -->
       <div class="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 dark:border-emerald-800/40 dark:bg-emerald-900/20">
-          <p class="text-xs text-emerald-600 dark:text-emerald-400">{{ t('cashflow.yieldLabel') }}</p>
+          <p class="text-xs text-emerald-600 dark:text-emerald-400">{{ t('monthlyDy.yieldLabel') }}</p>
           <p class="mt-1 text-3xl font-bold text-emerald-700 dark:text-emerald-300">
             {{ pick.dividendYield.toFixed(2) }}%
           </p>
           <p class="mt-0.5 text-xs text-emerald-600/80 dark:text-emerald-400/80">
-            {{ t('cashflow.paymentsPerYear', { n: pick.paymentFrequency }) }}
+            {{ t('monthlyDy.paymentsPerYear', { n: pick.paymentFrequency }) }}
           </p>
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-          <p class="text-xs text-gray-400">{{ t('cashflow.annualDividend') }}</p>
+          <p class="text-xs text-gray-400">{{ t('monthlyDy.annualDividend') }}</p>
           <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">
             {{ formatPrice(pick.annualDividend, pick.currency) }}
           </p>
           <p class="mt-0.5 text-xs text-gray-400">
-            {{ t('cashflow.perPaymentLabel') }}: {{ formatPrice(pick.annualDividend / Math.max(pick.paymentFrequency, 1), pick.currency) }}
+            {{ t('monthlyDy.perPaymentLabel') }}: {{ formatPrice(pick.annualDividend / Math.max(pick.paymentFrequency, 1), pick.currency) }}
           </p>
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-          <p class="text-xs text-gray-400">{{ t('cashflow.price') }}</p>
+          <p class="text-xs text-gray-400">{{ t('monthlyDy.price') }}</p>
           <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">
             {{ formatPrice(pick.currentPrice, pick.currency) }}
           </p>
@@ -542,7 +542,7 @@ onBeforeUnmount(() => {
           </p>
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-          <p class="text-xs text-gray-400">{{ t('cashflow.marketCap') }}</p>
+          <p class="text-xs text-gray-400">{{ t('monthlyDy.marketCap') }}</p>
           <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">
             {{ formatMarketCap(pick.marketCap, pick.currency) }}
           </p>
@@ -552,7 +552,7 @@ onBeforeUnmount(() => {
       <!-- Calendar block: next ex-div + next pay + last paid -->
       <div class="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
         <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-          <p class="text-[10px] uppercase tracking-wider text-gray-400">{{ t('cashflow.nextExDividendOn', { date: '' }) }}</p>
+          <p class="text-[10px] uppercase tracking-wider text-gray-400">{{ t('monthlyDy.nextExDividendOn', { date: '' }) }}</p>
           <p class="mt-1 text-base font-semibold text-gray-900 dark:text-white">
             <template v-if="pick.nextExDividendDate">{{ formatLongDate(pick.nextExDividendDate) }}</template>
             <template v-else>—</template>
@@ -562,21 +562,21 @@ onBeforeUnmount(() => {
             class="mt-0.5 text-xs"
             :class="daysUntil(pick.nextExDividendDate)! <= 14 && daysUntil(pick.nextExDividendDate)! >= 0 ? 'font-semibold text-amber-600 dark:text-amber-400' : 'text-gray-400'"
           >
-            <template v-if="daysUntil(pick.nextExDividendDate)! === 0">{{ t('cashflow.nextExDividendToday') }}</template>
+            <template v-if="daysUntil(pick.nextExDividendDate)! === 0">{{ t('monthlyDy.nextExDividendToday') }}</template>
             <template v-else-if="daysUntil(pick.nextExDividendDate)! > 0">
-              {{ t('cashflow.nextExDividendIn', { days: daysUntil(pick.nextExDividendDate) }) }}
+              {{ t('monthlyDy.nextExDividendIn', { days: daysUntil(pick.nextExDividendDate) }) }}
             </template>
           </p>
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-          <p class="text-[10px] uppercase tracking-wider text-gray-400">{{ t('cashflow.nextPaymentOn', { date: '' }) }}</p>
+          <p class="text-[10px] uppercase tracking-wider text-gray-400">{{ t('monthlyDy.nextPaymentOn', { date: '' }) }}</p>
           <p class="mt-1 text-base font-semibold text-gray-900 dark:text-white">
             <template v-if="pick.nextPaymentDate">{{ formatLongDate(pick.nextPaymentDate) }}</template>
             <template v-else>—</template>
           </p>
         </div>
         <div class="rounded-2xl border border-gray-200 bg-white p-4 dark:border-gray-800 dark:bg-gray-900">
-          <p class="text-[10px] uppercase tracking-wider text-gray-400">{{ t('cashflow.lastDividendOn', { date: '' }) }}</p>
+          <p class="text-[10px] uppercase tracking-wider text-gray-400">{{ t('monthlyDy.lastDividendOn', { date: '' }) }}</p>
           <p class="mt-1 text-base font-semibold text-gray-900 dark:text-white">
             <template v-if="pick.lastDividendDate">{{ formatLongDate(pick.lastDividendDate) }}</template>
             <template v-else>—</template>
@@ -590,17 +590,17 @@ onBeforeUnmount(() => {
       <!-- Distributions (up to trailing 5 years, grouped by year) -->
       <div class="mb-6 rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
         <h2 class="mb-4 text-sm font-semibold text-gray-700 dark:text-gray-300">
-          {{ t('cashflow.distributionsTitle') }}
+          {{ t('monthlyDy.distributionsTitle') }}
         </h2>
         <div v-if="distributionsByYear.length === 0" class="text-xs text-gray-400">
-          {{ t('cashflow.distributionsEmpty') }}
+          {{ t('monthlyDy.distributionsEmpty') }}
         </div>
         <div v-else class="space-y-5">
           <section v-for="g in distributionsByYear" :key="g.year">
             <header class="mb-2 flex items-baseline justify-between gap-3 border-b border-gray-100 pb-1 dark:border-gray-800">
               <span class="text-xs font-semibold text-gray-700 dark:text-gray-300">{{ g.year }}</span>
               <span class="text-[11px] text-gray-400">
-                {{ t('cashflow.distributionsYearTotal', { total: formatPrice(g.total, pick.currency), count: g.rows.length }) }}
+                {{ t('monthlyDy.distributionsYearTotal', { total: formatPrice(g.total, pick.currency), count: g.rows.length }) }}
               </span>
             </header>
             <ul class="divide-y divide-gray-100 dark:divide-gray-800">
@@ -662,10 +662,10 @@ onBeforeUnmount(() => {
         class="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900"
       >
         <h2 class="mb-3 text-sm font-semibold text-gray-700 dark:text-gray-300">
-          {{ t('cashflow.keyFactsTitle') }}
+          {{ t('monthlyDy.keyFactsTitle') }}
         </h2>
         <div class="flex items-baseline gap-2 text-sm">
-          <span class="text-xs text-gray-400">{{ t('cashflow.expenseRatio') }}</span>
+          <span class="text-xs text-gray-400">{{ t('monthlyDy.expenseRatio') }}</span>
           <span class="font-mono font-bold text-gray-900 dark:text-white">{{ fmtPct(pick.expenseRatio!) }}</span>
         </div>
       </div>

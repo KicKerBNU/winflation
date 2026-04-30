@@ -4,7 +4,7 @@
 // through Firestore.
 //
 // Called automatically at the end of bulk-fetch-spine-logos.mjs,
-// bulk-fetch-cashflow-logos.mjs, and update-logo.mjs.
+// bulk-fetch-monthly-dy-logos.mjs, and update-logo.mjs.
 //
 // Manual usage:
 //   node scripts/regenerate-logo-manifest.mjs

@@ -1,10 +1,10 @@
 import { defineStore } from 'pinia'
 import { computed, ref } from 'vue'
-import { fetchCashflow } from '../api/cashflow.api'
-import type { CashflowPick } from '../domain/cashflow.types'
+import { fetchMonthlyDy } from '../api/monthly-dy.api'
+import type { MonthlyDyPick } from '../domain/monthly-dy.types'
 
-export const useCashflowStore = defineStore('cashflow', () => {
-  const picks = ref<CashflowPick[]>([])
+export const useMonthlyDyStore = defineStore('monthly-dy', () => {
+  const picks = ref<MonthlyDyPick[]>([])
   const generatedAt = ref<string | null>(null)
   const isLoading = ref(false)
   const error = ref<string | null>(null)
@@ -16,12 +16,12 @@ export const useCashflowStore = defineStore('cashflow', () => {
     isLoading.value = true
     error.value = null
     try {
-      const data = await fetchCashflow()
+      const data = await fetchMonthlyDy()
       if (!data) return
       generatedAt.value = data.generatedAt
       picks.value = data.picks
     } catch {
-      error.value = 'Failed to load cashflow picks.'
+      error.value = 'Failed to load monthly DY picks.'
     } finally {
       isLoading.value = false
     }

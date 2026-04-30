@@ -1,14 +1,14 @@
 # Runs weekly (Mondays at 03:00 UTC) and stores the curated monthly-paying
-# cashflow picks in Firestore. Users visiting /cashflow read the cached doc.
+# monthly-dy picks in Firestore. Users visiting /monthly-dy read the cached doc.
 #
 # Required GitHub Secrets:
 #   FIREBASE_SERVICE_ACCOUNT  — JSON string of the Firebase Admin service account key
 #
 # Required Firestore setup:
-#   Collection: cashflow   Documents: latest + dated snapshots
+#   Collection: monthly-dy   Documents: latest + dated snapshots
 #   Security rule: allow read; (public read — writes only from Admin SDK)
 
-name: Generate Cashflow Picks
+name: Generate Monthly DY Picks
 
 on:
   schedule:
@@ -29,8 +29,8 @@ jobs:
         working-directory: scripts
         run: npm install
 
-      - name: Generate and store cashflow picks
+      - name: Generate and store monthly-dy picks
         working-directory: scripts
         env:
           FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
-        run: node generate-cashflow.mjs
+        run: node generate-monthly-dy.mjs

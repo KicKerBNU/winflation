@@ -8,17 +8,17 @@ export type AssetClass =
 
 export type RiskTier = 'low' | 'medium' | 'high'
 
-export interface CashflowDistribution {
+export interface MonthlyDyDistribution {
   date: string   // ISO YYYY-MM-DD (ex-dividend date)
   amount: number // in pick currency
 }
 
-export interface CashflowPriceCandle {
+export interface MonthlyDyPriceCandle {
   date: string  // ISO YYYY-MM-DD (month-end close)
   close: number // in pick currency
 }
 
-export interface CashflowPick {
+export interface MonthlyDyPick {
   rank: number
   ticker: string
   company: string
@@ -47,17 +47,17 @@ export interface CashflowPick {
   nextExDividendDate: string | null  // next scheduled ex-div (if known) ISO
   nextPaymentDate: string | null     // next scheduled payment date ISO
   // History (up to trailing 5 years; will be shorter for younger tickers)
-  recentDistributions: CashflowDistribution[]
+  recentDistributions: MonthlyDyDistribution[]
   // Up to 60 monthly closes (trailing 5y); shorter when listing is younger
-  priceHistory: CashflowPriceCandle[]
+  priceHistory: MonthlyDyPriceCandle[]
   // ETF-only fields
   expenseRatio?: number | null
 }
 
-export interface CashflowResponse {
+export interface MonthlyDyResponse {
   generatedAt: string
   universeSize: number
   qualifiedCount: number
   riskDistribution: Partial<Record<RiskTier, number>>
-  picks: CashflowPick[]
+  picks: MonthlyDyPick[]
 }

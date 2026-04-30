@@ -1,0 +1,52 @@
+---
+description: Core project conventions for winflation.eu — always applied to every prompt
+alwaysApply: true
+---
+
+# winflation.eu — Project Conventions
+
+> Full context lives in `AGENTS.md` (project root). Read it when deeper detail is needed.
+
+## Tech Stack
+- **Vue 3** (`<script setup>` + Composition API)
+- **TypeScript** (strict mode)
+- **Pinia 3** (Setup Store style, `defineStore`)
+- **Vue Router 5** (client-side)
+- **Tailwind CSS 4** (utility-first, no inline styles)
+- **vue-i18n 11** (`useI18n`, no hardcoded strings in templates)
+- **Chart.js 4** (line + bar charts)
+- **FontAwesome 7** (`<FontAwesomeIcon>` global component)
+- **Firebase** (Auth + Firestore, no Storage)
+- **Google Gemini** (`gemini-flash-latest`)
+- **Yahoo Finance** (`yahoo-finance2`, server-side scripts only)
+
+## Folder Structure
+```
+src/
+  modules/          # Feature modules (DDD)
+    <feature>/
+      api/          # HTTP requests
+      domain/       # TypeScript types
+      store/        # Pinia stores
+      <feature>.vue
+      <feature>.routes.ts
+  i18n/locales/     # en-US.ts and pt-BR.ts (always keep in sync)
+  plugins/          # firebase.ts, fontawesome.ts
+  router/index.ts   # spreads each module's routes
+  assets/styles/    # Tailwind entry point
+scripts/            # Node maintenance scripts (run from project root)
+```
+
+## Conventions
+- No `components/` folder at `src/` root — components belong inside their feature module
+- Each feature module owns its routes (`<feature>.routes.ts`)
+- TypeScript contracts go in `domain/`; Pinia stores in `store/`
+- All UI text via `useI18n` — add keys to **both** `en-US.ts` and `pt-BR.ts`
+- Icons: register in `src/plugins/fontawesome.ts` before use
+- Per-user Firestore data: `users/{uid}` doc with `setDoc({ merge: true })`
+- Scripts need `FIREBASE_SERVICE_ACCOUNT` + `GEMINI_API_KEY` env vars; run with `node --env-file=.env.local scripts/<name>.mjs`
+
+## Design Rules
+- **Never change design/layout unless explicitly asked** — structural refactors (extract component, add store) must preserve the existing markup 1:1
+- Every interactive element must have `cursor-pointer`
+- Dark mode via Tailwind `dark:` variants — no separate theme files

@@ -1,6 +1,6 @@
-// One-time bulk logo fetch for the CASHFLOW universe.
+// One-time bulk logo fetch for the MONTHLY DY universe.
 //
-// For every ticker in scripts/cashflow-universe.mjs:
+// For every ticker in scripts/monthly-dy-universe.mjs:
 //   1. Skip if public/logos/<TICKER>.<ext> already exists (unless --force).
 //   2. Resolve the company's website domain via Yahoo profile.
 //   3. Try logo URL candidates in priority order:
@@ -8,13 +8,13 @@
 //   4. Validate (image content-type, size ≤ 2 MB) and write to public/logos/.
 //
 // After running, commit `public/logos/*` and push — Netlify rebuilds and the
-// logos serve from /logos/<TICKER>.<ext>. The weekly cashflow cron auto-
+// logos serve from /logos/<TICKER>.<ext>. The weekly monthly-dy cron auto-
 // populates `logoUrl` on each pick from public/logos/, so no Firestore step.
 //
 // Usage (from project root):
-//   node --env-file=.env.local scripts/bulk-fetch-cashflow-logos.mjs           # skip existing
-//   node --env-file=.env.local scripts/bulk-fetch-cashflow-logos.mjs --force   # redo all
-import { CASHFLOW_UNIVERSE } from './cashflow-universe.mjs'
+//   node --env-file=.env.local scripts/bulk-fetch-monthly-dy-logos.mjs           # skip existing
+//   node --env-file=.env.local scripts/bulk-fetch-monthly-dy-logos.mjs --force   # redo all
+import { MONTHLY_DY_UNIVERSE } from './monthly-dy-universe.mjs'
 import { GoogleGenAI } from '@google/genai'
 import YahooFinance from 'yahoo-finance2'
 import { mkdirSync, readdirSync, writeFileSync } from 'node:fs'
@@ -147,8 +147,8 @@ async function downloadAndValidate(url) {
 }
 
 // ── Main ────────────────────────────────────────────────────────────────────
-const tickers = CASHFLOW_UNIVERSE.map((e) => e.ticker)
-console.log(`[bulk-logos:cashflow] Universe size: ${tickers.length}. Force: ${force}.`)
+const tickers = MONTHLY_DY_UNIVERSE.map((e) => e.ticker)
+console.log(`[bulk-logos:monthly-dy] Universe size: ${tickers.length}. Force: ${force}.`)
 
 // 1. Find tickers we still need to fetch
 const needFetch = []
@@ -162,15 +162,15 @@ for (const ticker of tickers) {
   }
   needFetch.push(ticker)
 }
-console.log(`[bulk-logos:cashflow] Skipping ${skipped.length} (already present). Fetching ${needFetch.length}.`)
+console.log(`[bulk-logos:monthly-dy] Skipping ${skipped.length} (already present). Fetching ${needFetch.length}.`)
 
 if (needFetch.length === 0) {
-  console.log('[bulk-logos:cashflow] Nothing to do. Exiting.')
+  console.log('[bulk-logos:monthly-dy] Nothing to do. Exiting.')
   process.exit(0)
 }
 
 // 2. Resolve domains via Yahoo for the ones we need
-console.log('[bulk-logos:cashflow] Resolving company domains via Yahoo…')
+console.log('[bulk-logos:monthly-dy] Resolving company domains via Yahoo…')
 const domainResolved = await Promise.all(
   needFetch.map(async (ticker) => {
     const info = await fetchDomainFromYahoo(ticker)
@@ -183,7 +183,7 @@ const geminiSuggestions = new Map() // ticker → URL
 const chunkSize = 10
 for (let i = 0; i < domainResolved.length; i += chunkSize) {
   const chunk = domainResolved.slice(i, i + chunkSize)
-  console.log(`[bulk-logos:cashflow] Gemini chunk ${i / chunkSize + 1}/${Math.ceil(domainResolved.length / chunkSize)} (${chunk.length} tickers)…`)
+  console.log(`[bulk-logos:monthly-dy] Gemini chunk ${i / chunkSize + 1}/${Math.ceil(domainResolved.length / chunkSize)} (${chunk.length} tickers)…`)
   const suggestions = await fetchLogoSuggestions(chunk)
   for (const s of suggestions) {
     if (s.ticker && s.logoUrl) geminiSuggestions.set(s.ticker.toUpperCase(), s.logoUrl)
@@ -210,7 +210,7 @@ for (const item of domainResolved) {
       const fileName = `${safe}.${ext}`
       const filePath = resolve(logosDir, fileName)
       writeFileSync(filePath, buf)
-      console.log(`[bulk-logos:cashflow] ✓ ${item.ticker} → ${fileName} (${buf.length}B from ${url.slice(0, 60)})`)
+      console.log(`[bulk-logos:monthly-dy] ✓ ${item.ticker} → ${fileName} (${buf.length}B from ${url.slice(0, 60)})`)
       successes.push(item.ticker)
       saved = true
       break
@@ -220,7 +220,7 @@ for (const item of domainResolved) {
   }
   if (!saved) {
     failures.push({ ticker: item.ticker, reason: `all ${candidates.length} candidates failed` })
-    console.warn(`[bulk-logos:cashflow] ✗ ${item.ticker}: all candidates failed`)
+    console.warn(`[bulk-logos:monthly-dy] ✗ ${item.ticker}: all candidates failed`)
   }
 }
 
@@ -231,15 +231,15 @@ if (successes.length > 0) {
 
 // 6. Summary
 console.log('')
-console.log(`[bulk-logos:cashflow] DONE.`)
+console.log(`[bulk-logos:monthly-dy] DONE.`)
 console.log(`  Skipped existing: ${skipped.length}`)
 console.log(`  Successfully fetched: ${successes.length}`)
 console.log(`  Failed: ${failures.length}`)
 if (failures.length > 0) {
   console.log('')
-  console.log('[bulk-logos:cashflow] Failed tickers (fix manually with update-logo.mjs):')
+  console.log('[bulk-logos:monthly-dy] Failed tickers (fix manually with update-logo.mjs):')
   for (const f of failures) console.log(`  - ${f.ticker}: ${f.reason}`)
 }
 console.log('')
-console.log('[bulk-logos:cashflow] Next steps:')
-console.log('  git add public/logos/ && git commit -m "logos: backfill cashflow" && git push')
+console.log('[bulk-logos:monthly-dy] Next steps:')
+console.log('  git add public/logos/ && git commit -m "logos: backfill monthly-dy" && git push')

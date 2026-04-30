@@ -1,4 +1,4 @@
-export type FollowSource = 'ai-pick' | 'dividend'
+export type FollowSource = 'ai-pick' | 'dividend' | 'monthly-dy'
 
 export interface FollowedCompany {
   ticker: string

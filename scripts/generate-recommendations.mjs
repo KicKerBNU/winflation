@@ -132,6 +132,7 @@ async function fetchYahooQuote(ticker) {
         'summaryProfile',
         'defaultKeyStatistics',
         'financialData',
+        'calendarEvents',
       ],
     })
     const price = summary.price
@@ -139,9 +140,16 @@ async function fetchYahooQuote(ticker) {
     const profile = summary.summaryProfile
     const fin = summary.financialData
     const stats = summary.defaultKeyStatistics
+    const cal = summary.calendarEvents
     if (!price?.regularMarketPrice) return null
     const annualDividend = detail?.dividendRate ?? detail?.trailingAnnualDividendRate ?? 0
     const yieldFraction = detail?.dividendYield ?? detail?.trailingAnnualDividendYield ?? 0
+    const nextExDividendDate = cal?.exDividendDate
+      ? toIsoDate(cal.exDividendDate)
+      : detail?.exDividendDate
+        ? toIsoDate(detail.exDividendDate)
+        : null
+    const nextPaymentDate = cal?.dividendDate ? toIsoDate(cal.dividendDate) : null
     return {
       currentPrice: +price.regularMarketPrice,
       currency: price.currency ?? null,
@@ -166,12 +174,26 @@ async function fetchYahooQuote(ticker) {
       sharesOutstanding: stats?.sharesOutstanding != null ? +stats.sharesOutstanding : null,
       forwardPE: stats?.forwardPE != null ? +stats.forwardPE : null,
       beta: stats?.beta != null ? +stats.beta : null,
+      nextExDividendDate,
+      nextPaymentDate,
       source: 'yahoo',
     }
   } catch (err) {
     console.warn(`[yahoo:quote] ${ticker}: ${err.message?.split('\n')[0] ?? err}`)
     return null
   }
+}
+
+function toIsoDate(value) {
+  if (!value) return null
+  const date =
+    value instanceof Date
+      ? value
+      : typeof value === 'number'
+        ? new Date(value < 10_000_000_000 ? value * 1000 : value)
+        : new Date(value)
+  if (Number.isNaN(date.getTime())) return null
+  return date.toISOString().slice(0, 10)
 }
 
 async function fetchYahooHistory(ticker) {
@@ -331,6 +353,20 @@ function computeMetrics(quote, history) {
     dividendCagr5y: cagr,
     revenueTtm: quote.revenueTtm,
   }
+}
+
+function latestDividendPayout(dividendsPerYear) {
+  return (dividendsPerYear ?? [])
+    .flatMap((year) => year.payouts ?? [])
+    .filter((payout) => payout?.date && payout.amount > 0)
+    .sort((a, b) => b.date.localeCompare(a.date))[0] ?? null
+}
+
+function inferPaymentFrequency(dividendsPerYear) {
+  return (dividendsPerYear ?? [])
+    .slice()
+    .reverse()
+    .find((year) => year.payments > 0)?.payments ?? null
 }
 
 // ── Cascading hard filter ───────────────────────────────────────────────────
@@ -691,6 +727,8 @@ const narratives = await Promise.all(picked.map((p) => generateNarrative(p)))
 let logosMatched = 0
 const companies = picked.map((p, i) => {
   const logoUrl = LOGO_INDEX.get(safeTicker(p.ticker)) ?? null
+  const lastPayout = latestDividendPayout(p.history.dividendsPerYear)
+  const paymentFrequency = inferPaymentFrequency(p.history.dividendsPerYear)
   if (logoUrl) logosMatched++
   return {
     rank: i + 1,
@@ -707,6 +745,10 @@ const companies = picked.map((p, i) => {
     currentPrice: p.quote.currentPrice,
     dividendYield: p.quote.dividendYield,
     annualDividend: p.quote.annualDividend,
+    lastDividendAmount: lastPayout?.amount ?? null,
+    nextExDividendDate: p.quote.nextExDividendDate ?? null,
+    nextPaymentDate: p.quote.nextPaymentDate ?? null,
+    paymentFrequency,
     marketCap: p.quote.marketCap,
     priceChangePercent: p.quote.priceChangePercent,
     status: narratives[i].status,
