@@ -4,7 +4,9 @@ import { useI18n } from 'vue-i18n'
 import { useInterestRateStore } from '@/modules/interest-rate/store/interest-rate.store'
 import { useInflationStore } from '@/modules/inflation/store/inflation.store'
 import { useDividendsStore } from '@/modules/dividends/store/dividends.store'
+import { useDashboardStore } from './store/dashboard.store'
 import { useRouter } from 'vue-router'
+import UpcomingExDividends from './components/upcoming-ex-dividends.vue'
 
 const { t } = useI18n()
 const router = useRouter()
@@ -12,9 +14,10 @@ const router = useRouter()
 const rateStore = useInterestRateStore()
 const inflationStore = useInflationStore()
 const dividendsStore = useDividendsStore()
+const dashboardStore = useDashboardStore()
 
 onMounted(async () => {
-  await Promise.all([rateStore.init(), inflationStore.init(), dividendsStore.init()])
+  await Promise.all([rateStore.init(), inflationStore.init(), dividendsStore.init(), dashboardStore.init()])
 })
 
 const depositRate = computed(() => rateStore.depositRate?.rate ?? 0)
@@ -48,6 +51,9 @@ function countryFlag(code: string): string {
       <h1 class="text-2xl font-bold text-gray-900 dark:text-white">{{ t('dashboard.title') }}</h1>
       <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{{ t('dashboard.subtitle') }}</p>
     </div>
+
+    <!-- Upcoming ex-dividends -->
+    <UpcomingExDividends />
 
     <!-- Stat cards -->
     <div class="mb-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
