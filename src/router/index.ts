@@ -5,6 +5,7 @@ import { inflationRoutes } from '@/modules/inflation/inflation.routes'
 import { dividendsRoutes } from '@/modules/dividends/dividends.routes'
 import { aiRecommendationRoutes } from '@/modules/ai-recommendation/ai-recommendation.routes'
 import { monthlyDyRoutes } from '@/modules/monthly-dy/monthly-dy.routes'
+import { quarterlyDyRoutes } from '@/modules/quarterly-dy/quarterly-dy.routes'
 import { authRoutes } from '@/modules/auth/auth.routes'
 import { followRoutes } from '@/modules/follow/follow.routes'
 import { mineralsRoutes } from '@/modules/minerals/minerals.routes'
@@ -20,6 +21,7 @@ export const router = createRouter({
     ...dividendsRoutes,
     ...aiRecommendationRoutes,
     ...monthlyDyRoutes,
+    ...quarterlyDyRoutes,
     ...mineralsRoutes,
     ...authRoutes,
     ...followRoutes,

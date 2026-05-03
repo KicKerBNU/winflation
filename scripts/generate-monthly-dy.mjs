@@ -114,8 +114,9 @@ async function fetchYahooQuote(ticker) {
     const yieldFraction = detail?.dividendYield ?? detail?.trailingAnnualDividendYield ?? 0
 
     const exDate = detail?.exDividendDate ? toIsoDate(detail.exDividendDate) : null
-    const nextDivObj = cal?.dividendDate ?? cal?.exDividendDate ?? null
-    const nextPaymentDate = nextDivObj ? toIsoDate(nextDivObj) : null
+    // dividendDate is the actual payment date — never fall back to exDividendDate
+    // (payment date is always after ex-div; using ex-div as payment date is wrong)
+    const nextPaymentDate = cal?.dividendDate ? toIsoDate(cal.dividendDate) : null
 
     return {
       currentPrice: +price.regularMarketPrice,
@@ -147,6 +148,12 @@ function toIsoDate(d) {
   const t = d instanceof Date ? d : new Date(d)
   if (Number.isNaN(t.getTime())) return null
   return t.toISOString().slice(0, 10)
+}
+
+function addDays(isoDate, days) {
+  const d = new Date(`${isoDate}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
 }
 
 async function fetchHistory(ticker) {
@@ -284,7 +291,14 @@ const picks = sorted.map((c, i) => {
     lastDividendDate: lastDist?.date ?? c.quote.lastExDividendDate ?? null,
     lastDividendAmount: lastDist?.amount ?? null,
     nextExDividendDate: c.quote.nextExDividendDate ?? null,
-    nextPaymentDate: c.quote.nextPaymentDate ?? null,
+    nextPaymentDate: (() => {
+      if (c.quote.nextPaymentDate) return c.quote.nextPaymentDate
+      // Estimate: ex-div + 14 days (typical US monthly payer lag).
+      // Falls back to last distribution date + 14 days when Yahoo has no ex-div either.
+      // The weekly cron replaces this with the real date as soon as Yahoo provides it.
+      const base = c.quote.nextExDividendDate ?? lastDist?.date ?? null
+      return base ? addDays(base, 14) : null
+    })(),
     recentDistributions: c.distributions,
     priceHistory: c.priceHistory,
     expenseRatio: c.quote.expenseRatio ?? null,

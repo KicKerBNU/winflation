@@ -104,14 +104,16 @@ async function fetchEcbDepositRate() {
 
 // ── Gemini helpers ──────────────────────────────────────────────────────────
 async function callGeminiWithRetry(prompt) {
-  for (let attempt = 0; attempt < 4; attempt++) {
+  for (let attempt = 0; attempt < 5; attempt++) {
     try {
       const res = await ai.models.generateContent({ model: 'gemini-flash-latest', contents: prompt })
       return (res.text ?? '').trim()
     } catch (err) {
       const isRateLimit = err instanceof Error && err.message.includes('429')
-      if (!isRateLimit || attempt === 3) throw err
-      await new Promise((r) => setTimeout(r, 2000 * 2 ** attempt))
+      if (!isRateLimit || attempt === 4) throw err
+      const suggestedSeconds = err.message.match(/"retryDelay":"(\d+)s"/)?.[1]
+      const delay = suggestedSeconds ? (+suggestedSeconds + 2) * 1000 : 2000 * 2 ** attempt
+      await new Promise((r) => setTimeout(r, delay))
     }
   }
   return ''
@@ -149,7 +151,13 @@ async function fetchYahooQuote(ticker) {
       : detail?.exDividendDate
         ? toIsoDate(detail.exDividendDate)
         : null
-    const nextPaymentDate = cal?.dividendDate ? toIsoDate(cal.dividendDate) : null
+    // Yahoo omits dividendDate for most non-US stocks; estimate payment as
+    // ex-div + 28 days (typical EU large-cap settlement window).
+    const nextPaymentDate = cal?.dividendDate
+      ? toIsoDate(cal.dividendDate)
+      : nextExDividendDate
+        ? addDays(nextExDividendDate, 28)
+        : null
     return {
       currentPrice: +price.regularMarketPrice,
       currency: price.currency ?? null,
@@ -194,6 +202,12 @@ function toIsoDate(value) {
         : new Date(value)
   if (Number.isNaN(date.getTime())) return null
   return date.toISOString().slice(0, 10)
+}
+
+function addDays(isoDate, days) {
+  const d = new Date(`${isoDate}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
 }
 
 async function fetchYahooHistory(ticker) {
@@ -619,6 +633,70 @@ Return ONLY raw JSON, no markdown:
   }
 }
 
+// ── Dividend calendar enrichment via Gemini (single batch call for all picks) ─
+function isValidFutureDate(dateStr, minDaysOut = 0, maxDaysOut = 365) {
+  if (!dateStr || typeof dateStr !== 'string') return false
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) return false
+  const daysOut = (new Date(`${dateStr}T00:00:00Z`) - Date.now()) / 86_400_000
+  return daysOut >= minDaysOut && daysOut <= maxDaysOut
+}
+
+async function fetchDividendCalendarFromGemini(picks) {
+  if (picks.length === 0) return {}
+
+  const list = picks
+    .map((p) => `- ${p.ticker} (${p.quote.longName ?? p.quote.shortName ?? p.ticker})`)
+    .join('\n')
+
+  const prompt = `Today is ${today}. For each European dividend stock below, provide the next announced dividend calendar:
+
+1. "nextExDividendDate": the upcoming ex-dividend date (YYYY-MM-DD) — the last day to buy to be entitled to the dividend. Must be in the future.
+2. "nextPaymentDate": the date shareholders actually receive the cash (YYYY-MM-DD). Must be strictly AFTER the ex-dividend date — never the same day.
+3. "dividendAmount": the gross dividend amount per share in the stock's local currency.
+
+Stocks:
+${list}
+
+Return ONLY raw JSON, no markdown, keyed by the exact ticker symbol shown:
+{
+  "TICKER.XX": { "nextExDividendDate": "YYYY-MM-DD", "nextPaymentDate": "YYYY-MM-DD", "dividendAmount": 0.00 },
+  ...
+}
+
+Use null for any individual field you are not confident about. Do not guess dates — only provide what has been publicly announced.`
+
+  try {
+    const raw = stripFences(await callGeminiWithRetry(prompt))
+    const parsed = JSON.parse(raw)
+    const result = {}
+    for (const [ticker, data] of Object.entries(parsed)) {
+      if (!data || typeof data !== 'object') continue
+      const exDiv = isValidFutureDate(data.nextExDividendDate, 0, 365)
+        ? data.nextExDividendDate
+        : null
+      const paymentDate =
+        isValidFutureDate(data.nextPaymentDate, 0, 395) &&
+        (exDiv ? data.nextPaymentDate > exDiv : true)
+          ? data.nextPaymentDate
+          : null
+      const dividendAmount =
+        typeof data.dividendAmount === 'number' && data.dividendAmount > 0
+          ? +data.dividendAmount.toFixed(4)
+          : null
+      result[ticker] = { exDivDate: exDiv, paymentDate, dividendAmount }
+    }
+    const withExDiv = Object.values(result).filter((r) => r.exDivDate).length
+    const withPayment = Object.values(result).filter((r) => r.paymentDate).length
+    console.log(
+      `[dividend-calendar] Gemini resolved ${picks.length} picks — exDiv: ${withExDiv}, paymentDate: ${withPayment}`,
+    )
+    return result
+  } catch (err) {
+    console.warn(`[dividend-calendar] Gemini batch call failed: ${err.message}`)
+    return {}
+  }
+}
+
 // ── Watch-list candidates from Gemini (beyond the spine) ────────────────────
 async function fetchWatchList(spineTickers) {
   const prompt = `You are a financial analyst specializing in European dividend stocks.
@@ -718,10 +796,11 @@ if (picked.length < TARGET) {
     `[selection] Could only fill ${picked.length} of ${TARGET} after relaxing every dimension. Consider expanding eu-dividend-universe.mjs.`,
   )
 }
-console.log(`[${new Date().toISOString()}] Generating narratives in parallel…`)
-
-// Narratives (per pick, parallel)
+console.log(`[${new Date().toISOString()}] Generating narratives…`)
 const narratives = await Promise.all(picked.map((p) => generateNarrative(p)))
+
+console.log(`[${new Date().toISOString()}] Fetching dividend calendar from Gemini…`)
+const dividendCalendar = await fetchDividendCalendarFromGemini(picked)
 
 // Build the final company list
 let logosMatched = 0
@@ -729,6 +808,12 @@ const companies = picked.map((p, i) => {
   const logoUrl = LOGO_INDEX.get(safeTicker(p.ticker)) ?? null
   const lastPayout = latestDividendPayout(p.history.dividendsPerYear)
   const paymentFrequency = inferPaymentFrequency(p.history.dividendsPerYear)
+  const gemini = dividendCalendar[p.ticker] ?? {}
+  const nextExDividendDate = gemini.exDivDate ?? p.quote.nextExDividendDate ?? null
+  const nextPaymentDate =
+    gemini.paymentDate
+    ?? p.quote.nextPaymentDate
+    ?? (nextExDividendDate ? addDays(nextExDividendDate, 28) : null)
   if (logoUrl) logosMatched++
   return {
     rank: i + 1,
@@ -745,9 +830,9 @@ const companies = picked.map((p, i) => {
     currentPrice: p.quote.currentPrice,
     dividendYield: p.quote.dividendYield,
     annualDividend: p.quote.annualDividend,
-    lastDividendAmount: lastPayout?.amount ?? null,
-    nextExDividendDate: p.quote.nextExDividendDate ?? null,
-    nextPaymentDate: p.quote.nextPaymentDate ?? null,
+    lastDividendAmount: lastPayout?.amount ?? gemini.dividendAmount ?? null,
+    nextExDividendDate,
+    nextPaymentDate,
     paymentFrequency,
     marketCap: p.quote.marketCap,
     priceChangePercent: p.quote.priceChangePercent,

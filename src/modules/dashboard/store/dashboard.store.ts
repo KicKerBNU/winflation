@@ -1,10 +1,12 @@
 import { defineStore } from 'pinia'
 import { computed } from 'vue'
 import { useMonthlyDyStore } from '@/modules/monthly-dy/store/monthly-dy.store'
+import { useQuarterlyDyStore } from '@/modules/quarterly-dy/store/quarterly-dy.store'
 import { useAiRecommendationStore } from '@/modules/ai-recommendation/store/ai-recommendation.store'
 import { useInflationStore } from '@/modules/inflation/store/inflation.store'
 import { useDividendsStore } from '@/modules/dividends/store/dividends.store'
 import type { MonthlyDyPick } from '@/modules/monthly-dy/domain/monthly-dy.types'
+import type { QuarterlyDyPick } from '@/modules/quarterly-dy/domain/quarterly-dy.types'
 import type { AiCompanyCard } from '@/modules/ai-recommendation/domain/ai-recommendation.types'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -15,7 +17,7 @@ export interface UpcomingDividend {
   countryCode: string | null
   sector: string | null
   currency: string | null
-  source: 'monthly-dy' | 'ai-pick'
+  source: 'monthly-dy' | 'quarterly-dy' | 'ai-pick'
   dividendYield: number
   paymentFrequency: number
   dividendAmount: number
@@ -24,6 +26,12 @@ export interface UpcomingDividend {
 }
 
 // ─── Pure helpers (exported so components can reuse) ─────────────────────────
+
+function addDays(isoDate: string, days: number): string {
+  const d = new Date(`${isoDate}T00:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + days)
+  return d.toISOString().slice(0, 10)
+}
 
 export function daysUntil(iso: string | null | undefined): number | null {
   if (!iso) return null
@@ -55,6 +63,14 @@ function monthlyDyToUpcoming(pick: MonthlyDyPick): UpcomingDividend | null {
   if (!amount || !nextExDividendDate) return null
   const exDays = daysUntil(nextExDividendDate)
   if (exDays === null || exDays <= 0) return null
+  // Guard against the stored payment date being on or before the ex-div date
+  // (a past cron bug stored the ex-div date as the payment date for some tickers).
+  const stored = pick.nextPaymentDate
+  const nextPaymentDate =
+    stored && stored > nextExDividendDate
+      ? stored
+      : addDays(nextExDividendDate, 14)
+
   return {
     ticker: pick.ticker,
     company: pick.company,
@@ -66,7 +82,34 @@ function monthlyDyToUpcoming(pick: MonthlyDyPick): UpcomingDividend | null {
     paymentFrequency: pick.paymentFrequency,
     dividendAmount: amount,
     nextExDividendDate,
-    nextPaymentDate: pick.nextPaymentDate ?? null,
+    nextPaymentDate,
+  }
+}
+
+function quarterlyDyToUpcoming(pick: QuarterlyDyPick): UpcomingDividend | null {
+  const amount = toDividendAmount(pick.lastDividendAmount, pick.annualDividend, pick.paymentFrequency)
+  const { nextExDividendDate } = pick
+  if (!amount || !nextExDividendDate) return null
+  const exDays = daysUntil(nextExDividendDate)
+  if (exDays === null || exDays <= 0) return null
+  const stored = pick.nextPaymentDate
+  const nextPaymentDate =
+    stored && stored > nextExDividendDate
+      ? stored
+      : addDays(nextExDividendDate, 20)
+
+  return {
+    ticker: pick.ticker,
+    company: pick.company,
+    countryCode: pick.countryCode,
+    sector: pick.sector,
+    currency: pick.currency,
+    source: 'quarterly-dy',
+    dividendYield: pick.dividendYield,
+    paymentFrequency: pick.paymentFrequency,
+    dividendAmount: amount,
+    nextExDividendDate,
+    nextPaymentDate,
   }
 }
 
@@ -80,6 +123,9 @@ function aiPickToUpcoming(card: AiCompanyCard): UpcomingDividend | null {
   if (!amount || !frequency || !nextExDividendDate) return null
   const exDays = daysUntil(nextExDividendDate)
   if (exDays === null || exDays <= 0) return null
+  const nextPaymentDate =
+    card.nextPaymentDate ?? addDays(nextExDividendDate, 28)
+
   return {
     ticker: card.ticker,
     company: card.company,
@@ -91,7 +137,7 @@ function aiPickToUpcoming(card: AiCompanyCard): UpcomingDividend | null {
     paymentFrequency: frequency,
     dividendAmount: amount,
     nextExDividendDate,
-    nextPaymentDate: card.nextPaymentDate ?? null,
+    nextPaymentDate,
   }
 }
 
@@ -99,6 +145,7 @@ function aiPickToUpcoming(card: AiCompanyCard): UpcomingDividend | null {
 
 export const useDashboardStore = defineStore('dashboard', () => {
   const monthlyDyStore = useMonthlyDyStore()
+  const quarterlyDyStore = useQuarterlyDyStore()
   const aiRecommendationStore = useAiRecommendationStore()
   const inflationStore = useInflationStore()
   const dividendsStore = useDividendsStore()
@@ -109,6 +156,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
     const byTicker = new Map<string, UpcomingDividend>()
     const candidates = [
       ...monthlyDyStore.picks.map(monthlyDyToUpcoming),
+      ...quarterlyDyStore.picks.map(quarterlyDyToUpcoming),
       ...aiRecommendationStore.cards.map(aiPickToUpcoming),
     ].filter((item): item is UpcomingDividend => item !== null)
 
@@ -117,7 +165,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       if (
         !existing ||
         item.nextExDividendDate < existing.nextExDividendDate ||
-        (item.nextExDividendDate === existing.nextExDividendDate && item.source === 'monthly-dy')
+        (item.nextExDividendDate === existing.nextExDividendDate && (item.source === 'monthly-dy' || item.source === 'quarterly-dy'))
       ) {
         byTicker.set(item.ticker, item)
       }
@@ -170,6 +218,7 @@ export const useDashboardStore = defineStore('dashboard', () => {
       inflationStore.init(),
       dividendsStore.init(),
       monthlyDyStore.init(),
+      quarterlyDyStore.init(),
       aiRecommendationStore.init(),
     ])
   }

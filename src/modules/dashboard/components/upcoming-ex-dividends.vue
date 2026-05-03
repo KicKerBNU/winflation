@@ -48,7 +48,16 @@ function routeForUpcoming(item: UpcomingDividend) {
   if (item.source === 'monthly-dy') {
     return { name: 'monthly-dy-detail', params: { ticker: encodeURIComponent(item.ticker) } }
   }
+  if (item.source === 'quarterly-dy') {
+    return { name: 'quarterly-dy-detail', params: { ticker: encodeURIComponent(item.ticker) } }
+  }
   return { name: 'ai-recommendation-detail', params: { ticker: encodeURIComponent(item.ticker) } }
+}
+
+function sourceLabel(item: UpcomingDividend): string {
+  if (item.source === 'monthly-dy') return t('dashboard.sourceMonthlyDy')
+  if (item.source === 'quarterly-dy') return t('dashboard.sourceQuarterlyDy')
+  return t('dashboard.sourceAiPicks')
 }
 </script>
 
@@ -93,7 +102,7 @@ function routeForUpcoming(item: UpcomingDividend) {
             </div>
           </div>
           <span class="flex-shrink-0 rounded-full bg-violet-500/10 px-2.5 py-1 text-[11px] font-semibold text-violet-600 dark:text-violet-300">
-            {{ item.source === 'monthly-dy' ? t('dashboard.sourceMonthlyDy') : t('dashboard.sourceAiPicks') }}
+            {{ sourceLabel(item) }}
           </span>
         </div>
 
@@ -145,7 +154,7 @@ function routeForUpcoming(item: UpcomingDividend) {
               </div>
             </div>
             <span class="flex-shrink-0 rounded-full bg-violet-500/10 px-2.5 py-1 text-[11px] font-semibold text-violet-600 dark:text-violet-300">
-              {{ item.source === 'monthly-dy' ? t('dashboard.sourceMonthlyDy') : t('dashboard.sourceAiPicks') }}
+              {{ sourceLabel(item) }}
             </span>
           </div>
 
@@ -190,7 +199,7 @@ function routeForUpcoming(item: UpcomingDividend) {
               </div>
             </div>
             <span class="flex-shrink-0 rounded-full bg-violet-500/10 px-2.5 py-1 text-[11px] font-semibold text-violet-600 dark:text-violet-300">
-              {{ item.source === 'monthly-dy' ? t('dashboard.sourceMonthlyDy') : t('dashboard.sourceAiPicks') }}
+              {{ sourceLabel(item) }}
             </span>
           </div>
 
@@ -225,6 +234,8 @@ function routeForUpcoming(item: UpcomingDividend) {
 <style scoped>
 .ex-dividend-marquee {
   position: relative;
+  width: 100%;
+  min-width: 0;
   overflow: hidden;
   -webkit-mask-image: linear-gradient(to right, transparent 0, black 5%, black 95%, transparent 100%);
   mask-image: linear-gradient(to right, transparent 0, black 5%, black 95%, transparent 100%);
@@ -240,7 +251,7 @@ function routeForUpcoming(item: UpcomingDividend) {
   animation-play-state: paused;
 }
 .ex-dividend-card {
-  width: min(390px, calc(100vw - 64px));
+  width: min(340px, calc(100vw - 80px));
   flex-shrink: 0;
 }
 .ex-dividend-company-name {

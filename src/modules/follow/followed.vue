@@ -129,7 +129,7 @@ type FilterValue = 'all' | FollowSource
 const activeFilter = ref<FilterValue>('all')
 
 const counts = computed(() => {
-  const c = { all: normalizedAll.value.length, 'ai-pick': 0, dividend: 0, 'monthly-dy': 0 }
+  const c = { all: normalizedAll.value.length, 'ai-pick': 0, dividend: 0, 'monthly-dy': 0, 'quarterly-dy': 0 }
   for (const v of normalizedAll.value) c[v.source] += 1
   return c
 })
@@ -145,6 +145,7 @@ const filterChips: { value: FilterValue; labelKey: string }[] = [
   { value: 'ai-pick', labelKey: 'follow.sourceAi' },
   { value: 'dividend', labelKey: 'follow.sourceDividend' },
   { value: 'monthly-dy', labelKey: 'follow.sourceMonthlyDy' },
+  { value: 'quarterly-dy', labelKey: 'follow.sourceQuarterlyDy' },
 ]
 
 // ── Source pill styling ───────────────────────────────────────────────────
@@ -160,6 +161,10 @@ const sourcePill: Record<FollowSource, { label: string; classes: string }> = {
   'monthly-dy': {
     label: 'follow.sourceMonthlyDy',
     classes: 'border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-800/40 dark:bg-emerald-900/30 dark:text-emerald-300',
+  },
+  'quarterly-dy': {
+    label: 'follow.sourceQuarterlyDy',
+    classes: 'border-indigo-200 bg-indigo-50 text-indigo-700 dark:border-indigo-800/40 dark:bg-indigo-900/30 dark:text-indigo-300',
   },
 }
 

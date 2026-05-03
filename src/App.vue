@@ -18,6 +18,7 @@ const sharedNavItems = [
   { to: '/dividends', icon: 'coins', labelKey: 'nav.dividends' },
   { to: '/ai-recommendation', icon: 'robot', labelKey: 'nav.aiRecommendation' },
   { to: '/monthly-dy', icon: 'calendar', labelKey: 'nav.monthlyDy' },
+  { to: '/quarterly-dy', icon: 'rotate', labelKey: 'nav.quarterlyDy' },
   { to: '/minerals', icon: 'gem', labelKey: 'nav.minerals' },
 ]
 

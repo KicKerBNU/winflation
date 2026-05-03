@@ -37,6 +37,7 @@ import {
   faTriangleExclamation,
   faShieldHalved,
   faGear,
+  faRotate,
 } from '@fortawesome/free-solid-svg-icons'
 import { faStar as farStar } from '@fortawesome/free-regular-svg-icons'
 import { faGoogle } from '@fortawesome/free-brands-svg-icons'
@@ -79,6 +80,7 @@ library.add(
   faTriangleExclamation,
   faShieldHalved,
   faGear,
+  faRotate,
   farStar,
   faGoogle,
 )

@@ -1,6 +1,6 @@
 # CLAUDE.md — winflation.eu
 
-> Last updated: 2026-04-27 via /learn
+> Last updated: 2026-05-03 via /learn
 
 ## Project Overview
 
@@ -34,6 +34,7 @@ src/
 │   ├── dividends/
 │   ├── ai-recommendation/
 │   ├── cashflow/       # /cashflow — monthly-paying dividend instruments
+│   ├── quarterly-dy/  # /quarterly-dy — quarterly-paying dividend instruments
 │   ├── minerals/
 │   ├── auth/           # Firebase Auth + per-user profile (taxCountryCode)
 │   ├── follow/         # Followed tickers/countries
@@ -48,53 +49,75 @@ src/
 └── assets/styles/      # Tailwind entry point
 
 scripts/
-├── eu-dividend-universe.mjs       # Curated ~55-ticker spine list (AI Picks)
-├── cashflow-universe.mjs          # Curated ~30-ticker monthly-payer list (Cashflow)
-├── generate-recommendations.mjs   # Daily AI Picks pipeline (cron at 02:00 UTC)
-├── generate-cashflow.mjs          # Weekly Cashflow pipeline (cron Mondays 03:00 UTC)
-├── bulk-fetch-spine-logos.mjs     # One-time logo backfill for the entire SPINE
-└── update-logo.mjs                # One-off logo replacement for a single ticker
+├── eu-dividend-universe.mjs              # Curated ~55-ticker spine list (AI Picks)
+├── cashflow-universe.mjs                 # Curated ~30-ticker monthly-payer list (Cashflow)
+├── quarterly-dy-universe.mjs            # Curated 50-ticker quarterly-payer list (Quarterly DY)
+├── generate-recommendations.mjs          # Daily AI Picks pipeline (cron at 02:00 UTC)
+├── generate-cashflow.mjs                 # Weekly Cashflow pipeline (cron Mondays 03:00 UTC)
+├── generate-quarterly-dy.mjs            # Weekly Quarterly DY pipeline (cron weekly)
+├── bulk-fetch-spine-logos.mjs            # One-time logo backfill for the SPINE list
+├── bulk-fetch-quarterly-dy-logos.mjs    # One-time logo backfill for quarterly-dy universe
+├── test-dividend-calendar.mjs            # Test Gemini dividend calendar (1 call, 5 tickers)
+└── update-logo.mjs                       # One-off logo replacement for a single ticker
 ```
 
 ### Maintenance scripts
 
 All under `scripts/`. Each requires `FIREBASE_SERVICE_ACCOUNT` (and `GEMINI_API_KEY` where the script calls Gemini) as env vars. Run from the project root with `node --env-file=.env.local scripts/<name>.mjs` so `node_modules` resolve correctly — running from `/tmp` or any other CWD will fail with `ERR_MODULE_NOT_FOUND`.
 
-- `update-logo.mjs <TICKER> <URL>` — replace one ticker's logo. Writes the file to `public/logos/<TICKER>.<ext>` (Netlify serves it same-origin). No Firestore write needed: the daily cron repopulates `logoUrl` on each pick from `public/logos/`. Requires a `git push` afterward to trigger a Netlify rebuild. Does NOT need `FIREBASE_SERVICE_ACCOUNT` anymore.
+- `update-logo.mjs <TICKER> <URL>` — replace one ticker's logo. Writes the file to `public/logos/<TICKER>.<ext>` (Netlify serves it same-origin). No Firestore write needed: the daily cron repopulates `logoUrl` on each pick from `public/logos/`. Requires a `git push` afterward to trigger a Netlify rebuild. Does NOT need `FIREBASE_SERVICE_ACCOUNT`.
 - `bulk-fetch-spine-logos.mjs` — one-time backfill of every ticker in `eu-dividend-universe.mjs`. Skips tickers that already have a file unless `--force`. Yahoo profile → Gemini suggestion → Clearbit → favicon fallback chain. Writes to `public/logos/` only (no Firestore). Needs `GEMINI_API_KEY` only.
+- `bulk-fetch-quarterly-dy-logos.mjs` — same pipeline as above but for `quarterly-dy-universe.mjs`. Run once after adding new tickers. After any logo script, run `git add public/logos/ src/services/logoManifest.ts && git push`.
 - `generate-recommendations.mjs` — daily quality-screened pipeline.
   - **Candidate pool**: curated `SPINE` (~55 EU large-caps) + Gemini watch list (~10 names beyond the spine).
   - **Enrichment**: Yahoo `quoteSummary` (`price`, `summaryDetail`, `summaryProfile`, `defaultKeyStatistics`, `financialData`) + `chart` for dividend events. FMP `/stable/profile` is a per-ticker fallback when Yahoo fails.
   - **Quality metrics**: payout ratio, debt/EBITDA, FCF coverage, ROE, dividend streak (consecutive years without > 30% cut, capped at 5), 5y dividend CAGR.
   - **Tier labelling, NOT tier gating**: every candidate is tagged with the strictest tier it passes (`Conservative` → `Moderate` → `Permissive`). Anything failing even Permissive is dropped. Sector-aware: banks/insurers skip the debt/EBITDA gate; utilities/REITs get a higher payout cap.
   - **Composite Quality Score (0–10)**: sustainability 40% + growth 30% + profitability 20% + yield 10%.
-  - **Selection (`fillToTarget`)**: yield-gate × diversification-cap grid (2.0× → 0× ECB; 3/3 → unlimited per sector/country). Strictest combination delivering ≥ 10 picks wins. Tiers are NOT part of this search — the batch is a mix.
-  - **Persistence**: writes `ai-recommendations/latest` and `ai-recommendations/<YYYY-MM-DD>`. Each company has its own `qualifyingTier` + `qualifyingTierLabel`. Top-level doc has `tierDistribution`, `tierFloorCount`, candidate counts, sector/country distribution.
-  - **Dividend payouts**: each `dividendsPerYear[i]` carries a `payouts: [{ date, amount }]` array — every individual payout in the 5-year window with its exact date.
-- `eu-dividend-universe.mjs` — curated spine list, plain string array of Yahoo-formatted tickers. Review monthly.
+  - **Selection (`fillToTarget`)**: yield-gate × diversification-cap grid (2.0× → 0× ECB; 3/3 → unlimited per sector/country). Strictest combination delivering ≥ 10 picks wins.
+  - **Gemini dividend calendar**: a single batch call asks Gemini for `nextExDividendDate`, `nextPaymentDate`, and `dividendAmount` for ALL picks. Gemini is PRIMARY for EU stocks (Yahoo unreliable for EU calendar data); Yahoo is fallback; +28 day estimate from ex-div is last resort.
+  - **Persistence**: writes `ai-recommendations/latest` and `ai-recommendations/<YYYY-MM-DD>`.
 - `generate-cashflow.mjs` — weekly cashflow pipeline (Mondays 03:00 UTC).
   - **Universe**: hand-curated `cashflow-universe.mjs` — each entry is `{ ticker, assetClass, notes }` where `assetClass` ∈ `equity-reit | mortgage-reit | bdc | energy-infra | stock | etf`.
-  - **Enrichment**: Yahoo `quoteSummary` (price, summaryDetail, summaryProfile, defaultKeyStatistics, calendarEvents) + `chart()` for trailing-12mo dividend events.
-  - **Monthly verification**: drops anything with fewer than 9 or more than 14 distributions in the last 12 months. The lower bound 9 (not 12) accommodates Yahoo's `chart()` occasionally missing 1-3 events near period boundaries; the upper bound rejects names that aren't actually monthly. Several tickers were pruned for moving off monthly (Pembina Pipeline → quarterly 2022, Annaly Capital → quarterly 2017).
+  - **Monthly verification**: drops anything with fewer than 9 or more than 14 distributions in the last 12 months.
   - **Risk tier** (deterministic): `equity-reit / etf / stock` → low, `bdc / energy-infra` → medium, `mortgage-reit` → high.
-  - **Persistence**: writes `cashflow/latest` and `cashflow/<YYYY-MM-DD>`. Each pick carries `dividendYield`, `paymentFrequency` (count of distributions in last 12mo), `assetClass`, `riskTier`, `lastDividendDate/Amount`, `nextExDividendDate`, `nextPaymentDate`, `recentDistributions: [{date, amount}]`, plus the standard quote fields.
+  - **Persistence**: writes `cashflow/latest` and `cashflow/<YYYY-MM-DD>`.
+- `generate-quarterly-dy.mjs` — weekly quarterly DY pipeline.
+  - **Universe**: hand-curated `quarterly-dy-universe.mjs` — each entry is `{ ticker, assetClass, region, notes }` where `assetClass` ∈ `dividend-aristocrat | dividend-achiever | utility | bank | energy | reit`.
+  - **Quarterly verification**: 3–5 payments in trailing 12 months. Lower bound 3 accommodates Yahoo occasionally missing 1 event near period boundary; upper bound 5 allows one special dividend on top of 4 quarterly.
+  - **Risk tier** (deterministic): `dividend-aristocrat / utility` → low; `dividend-achiever / bank / energy / reit` → medium.
+  - **Payment date estimate**: ex-div + 20 days (between monthly's 14d and EU annual's 28d).
+  - **Persistence**: writes `quarterly-dy/latest` and `quarterly-dy/<YYYY-MM-DD>`.
+  - **Known issue**: Canadian TSX-listed tickers (RY, TD, BNS, BMO, CM, TRP, CNQ) show only 1–2 distributions in trailing 12mo via Yahoo `chart()` despite paying quarterly for 15+ years. Yahoo boundary bug for TSX listings. These are dropped by the 3-payment minimum filter.
+- `eu-dividend-universe.mjs` — curated spine list, plain string array of Yahoo-formatted tickers. Review monthly.
 - `cashflow-universe.mjs` — curated monthly-payer list. Review when names change distribution cadence; tickers that go quarterly must be removed.
+- `quarterly-dy-universe.mjs` — curated quarterly-payer list. 50 tickers: 21 US Aristocrats, 7 US Achievers, 3 US Utilities, 3 US Banks, 3 US REITs, 5 Canadian Banks, 3 Canadian Energy, 1 Canadian Utility, 4 UK/European. Review quarterly.
 
 ## Features
 
 | Module | Routes | Purpose |
 |--------|--------|---------|
-| `dashboard` | `/` | Landing page with overview cards |
+| `dashboard` | `/` | Landing page with overview cards + upcoming ex-dividends marquee |
 | `interest-rate` | `/interest-rate` | ECB key interest-rate history chart |
 | `inflation` | `/inflation`, `/inflation/:countryCode` | HICP inflation across EU countries |
 | `dividends` | `/dividends`, `/dividends/:ticker` | Dividend stock list + per-company history |
 | `ai-recommendation` | `/ai-recommendation`, `/ai-recommendation/:ticker` | Daily Gemini-curated dividend picks. Hero + ranking cards carry strategy-tier badges. Detail page shows exact dividend payout dates. Logged-in users with a tax country see a per-pick "Beats / Matches / Loses your inflation" badge. |
-| `cashflow` | `/cashflow`, `/cashflow/:ticker` | Monthly-paying dividend instruments accessible to EU retail investors (US + TSX equity REITs, BDCs, mortgage REITs, monthly-paying stocks). Hand-curated universe (~30 tickers) populated weekly. List page has name search + min-yield slider + sort modes; detail page shows trailing 12 distributions, ex-div countdown, deterministic 3-tier risk badge, reused WHT chip and inflation badge. |
+| `cashflow` | `/cashflow`, `/cashflow/:ticker` | Monthly-paying dividend instruments. Hand-curated universe (~30 tickers), weekly cron. Emerald color scheme. |
+| `quarterly-dy` | `/quarterly-dy`, `/quarterly-dy/:ticker` | Quarterly-paying dividend instruments. US Aristocrats/Achievers, Canadian banks & energy, UK/European blue-chips. Indigo color scheme. Hand-curated 50-ticker universe, weekly cron. |
 | `minerals` | `/minerals`, `/minerals/:countryCode` | Critical-mineral reserves and production by EU country |
 | `auth` | `/login`, `/register` | Firebase Auth (`guestOnly`). Owns the per-user profile (`taxCountryCode`) via `user-profile.store`. |
-| `follow` | `/followed` | Followed tickers/countries (`requiresAuth`). Reads/writes `users/{uid}.followed*` fields. |
+| `follow` | `/followed` | Followed tickers/countries (`requiresAuth`). Reads/writes `users/{uid}.followed*` fields. `FollowSource` = `'ai-pick' | 'dividend' | 'monthly-dy' | 'quarterly-dy'`. |
 | `settings` | `/settings` | Tax country picker + WHT education hub (`requiresAuth`). |
 | `theme` | — | Dark/light theme store; no routes |
+
+## Dashboard Upcoming Ex-Dividends
+
+The dashboard marquee aggregates picks from **monthly-dy + quarterly-dy + AI picks** into a single upcoming ex-dividends strip. Sources are deduplicated by ticker (monthly-dy/quarterly-dy preferred over AI picks for the same ticker). The `dashboard.store.ts` calls `init()` on all three stores in parallel.
+
+Payment date fallbacks by source:
+- `monthly-dy`: stored date if `> nextExDividendDate`, else `nextExDividendDate + 14d`
+- `quarterly-dy`: stored date if `> nextExDividendDate`, else `nextExDividendDate + 20d`
+- `ai-pick`: stored date if present, else `nextExDividendDate + 28d`
 
 ## Per-user Firestore data: `users/{uid}`
 
@@ -113,26 +136,19 @@ match /users/{uid} {
 
 If the deployed rule is field-restricted (e.g. `hasOnly(['followed', 'followedMeta'])`), writes to new fields like `taxCountryCode` will fail with `Missing or insufficient permissions`. The simple owner-only rule above is the canonical version.
 
-The `users/{uid}` collection rule is documented in `README.md → Firestore Security Rules`.
-
 ## "Beats your inflation" feature
 
-Inflation comparison on AI Picks. Initially built using *issuer-country* HICP — that was wrong (a Brazilian holding ENEL.MI doesn't pay rent in Italy). Replaced with **user's tax-residence HICP**:
+Inflation comparison on AI Picks, Cashflow detail, and Quarterly DY detail. Uses **user's tax-residence HICP** (not issuer-country HICP — that was wrong and was corrected):
 
-- Headline on AI Picks: **always nominal yield**, never substituted.
-- Logged-out users (and logged-in users with no tax country): no badge, no CTA visible.
-- Logged-in users with tax country set: per-pick badge shows `nominal − userHICP`, sharp threshold:
+- Logged-out or no tax country: no badge shown.
+- Logged-in with tax country: `nominal − userHICP`, rounded to 1 decimal.
   - `> 0` → green "Beats your inflation by X%"
   - `= 0` → amber "Roughly matches your inflation"
   - `< 0` → red "Loses to your inflation by X%"
-  - Rounded to 1 decimal.
-- Logged-in users with no tax country see a soft-prompt CTA on AI Picks list and detail page linking to `/settings`.
-
-The badge **ignores FX risk and withholding tax** — known correctness gaps documented in P3 README TODOs. WHT v1 (education hub in Settings) ships standalone; folding WHT into the badge math is v2.
 
 ## Languages
 
-Supported locales (auto-detected from browser): `en-US` (default), `pt-BR`. Both must be kept in sync — every new key needs both entries.
+Supported locales (auto-detected from browser): `en-US` (default), `pt-BR`. Both must be kept in sync — every new key needs both entries. Translation keys are namespaced by feature (`quarterlyDy.*`, `monthlyDy.*`, `aiRecommendation.*`, etc.).
 
 ## External APIs
 
@@ -141,8 +157,8 @@ Supported locales (auto-detected from browser): `en-US` (default), `pt-BR`. Both
 | ECB Data API | Interest rates | 24 h |
 | Eurostat | Inflation (HICP, EU-27 only), government debt | 24 h |
 | Financial Modeling Prep | Dividend stock data | 24 h |
-| Google Gemini | AI economic briefings, company history | 24 h / monthly |
-| Firebase Firestore | AI recommendations, per-user profile, follows | Browser session |
+| Google Gemini | AI economic briefings, company history, EU dividend calendar | 24 h / monthly |
+| Firebase Firestore | AI recommendations, cashflow, quarterly-dy, per-user profile, follows | Browser session |
 
 ## Conventions
 
@@ -152,25 +168,17 @@ Supported locales (auto-detected from browser): `en-US` (default), `pt-BR`. Both
 - Use `@/` alias for absolute imports
 - TypeScript contracts (interfaces, types) go in the feature's `domain/` folder
 - All UI text via `useI18n` — no hardcoded strings in templates
-- FA icons added in `src/plugins/fontawesome.ts`; use `<FontAwesomeIcon icon="icon-name" />`. en-US and pt-BR locale files must be in sync — every new key gets both languages
-- Translation keys are namespaced by feature (e.g. `aiRecommendation.tierConservative`, `settings.wht.statutory`)
-- Storybook stories live alongside the component
+- FA icons added in `src/plugins/fontawesome.ts`; use `<FontAwesomeIcon icon="icon-name" />`
 - Every interactive element must have `cursor-pointer` (global rule)
-- README.md must be kept in sync with every feature change (user feedback rule)
+- README.md must be kept in sync with every feature change
 - For per-user data shared across modules, use `users/{uid}` with `setDoc({merge: true})` and let each module own its own field namespace
+- **Color scheme convention**: cashflow = emerald, quarterly-dy = indigo, AI picks = violet, dividends = blue
 
 ## Pinia store patterns
 
-- Most stores expose `init()` that's idempotent — safe to call multiple times. Initialised in `main.ts` so listeners are live before mount.
-- For per-user Firestore data: subscribe-on-auth-uid-change pattern. The `user-profile.store` watches `auth.user?.uid` to manage the Firestore listener lifecycle:
-  ```
-  watch(() => auth.user?.uid ?? null, (uid) => {
-    teardown()
-    if (uid) unsubscribe = subscribeToProfile(uid, ...)
-  }, { immediate: true })
-  ```
-  This handles login → subscribe, logout → unsubscribe automatically.
-- `auth.store` exposes a `ready` promise that resolves on first `onAuthStateChanged` callback. Route guards `await auth.ready` before checking `requiresAuth` so the user isn't bounced to `/login` on a refresh.
+- Most stores expose `init()` that's idempotent — safe to call multiple times.
+- For per-user Firestore data: subscribe-on-auth-uid-change pattern.
+- `auth.store` exposes a `ready` promise that resolves on first `onAuthStateChanged` callback. Route guards `await auth.ready` before checking `requiresAuth`.
 
 ## Commands
 
@@ -184,15 +192,13 @@ npm run build-storybook  # Build static Storybook
 
 ### Build issue (pre-existing, unrelated to feature work)
 
-`npm run build` currently fails with `error TS5101: Option 'baseUrl' is deprecated and will stop functioning in TypeScript 7.0` from `tsconfig.app.json`.
+`npm run build` currently fails with `error TS5101: Option 'baseUrl' is deprecated`.
 
 Workarounds:
 ```bash
 npx vite build                                                     # production bundle (skips vue-tsc)
 npx vue-tsc --noEmit --ignoreDeprecations 6.0 -p tsconfig.app.json # type-check only
 ```
-
-The proper fix is to add `"ignoreDeprecations": "6.0"` to `tsconfig.app.json` or migrate off `baseUrl` to `paths`-only.
 
 ## Environment Variables (`.env.local`)
 
@@ -215,54 +221,48 @@ FMP_API_KEY=                 # optional, falls back to VITE_FMP_API_KEY
 
 ## Known Gotchas & Debugging Notes
 
-- **TTM payout ratios > 100% are normal for EU large-caps** in transition years (BAS.DE 140%, ENEL.MI 121%, ORA.PA 625%). Don't tighten Permissive thresholds below `maxPayout: 1.5` (1.75 for utilities/REITs) without expecting survivor counts to collapse.
+- **TTM payout ratios > 100% are normal for EU large-caps** in transition years. Don't tighten Permissive thresholds below `maxPayout: 1.5` (1.75 for utilities/REITs).
 - **Yahoo `dividendYield` can be 0 even when the stock pays** — fallback path is `annualDividend / currentPrice`.
-- **Gemini free tier is 5 rpm** — `generate-recommendations.mjs` fans out 10 narrative calls in parallel; some hit 429 and fall back to generic narratives. Acceptable; fix only if every pick must have a custom narrative.
-- **Always run scripts from project root**, not `/tmp` — they import from `./eu-dividend-universe.mjs` and use `yahoo-finance2` from local `node_modules`.
+- **Yahoo `chart()` misses recent events for TSX-listed stocks** — Canadian quarterly payers (RY, TD, BNS, etc.) show only 1–2 trailing-12mo distributions despite paying quarterly for 15+ years. Boundary bug in Yahoo's API. They are dropped by the quarterly-dy 3-payment minimum.
+- **Yahoo EU dividend calendar is unreliable** — `calendarEvents.dividendDate` is null for most European stocks. Gemini is used as PRIMARY source for AI picks' `nextExDividendDate`, `nextPaymentDate`, and `dividendAmount` for all picks.
+- **Gemini rate limit error extraction** — parse suggested retry delay from 429 responses with `err.message.match(/"retryDelay":"(\d+)s"/)` and wait `(seconds + 2) * 1000` ms. Don't use fixed exponential backoff alone.
+- **Gemini free tier limits** — 5 rpm and 20 req/day. The AI picks cron uses ~11 calls/run. The quarterly-dy and cashflow crons do NOT call Gemini.
+- **Always run scripts from project root**, not `/tmp` — they import from local universe files and use `yahoo-finance2` from local `node_modules`.
 - **`dividendStreak` is capped at 5** — metric computed over a 5-year window. `minStreak: 6+` would be unsatisfiable.
-- **Logos under `public/logos/`** are served same-origin via Netlify (no Firebase Storage). After running logo scripts you must `git add public/logos/<TICKER>.<ext> && git push` to trigger a Netlify rebuild.
-- **Firestore rule field-restriction is the #1 source of "Missing or insufficient permissions" errors** for `users/{uid}` writes. Symptom: a write that adds a new field (e.g. `taxCountryCode`) fails on a doc the user can otherwise read/write. Fix: relax the rule to owner-only, or expand the `hasOnly([...])` allowlist.
-- **`refreshesDaily` i18n string still says "8:00 UTC"** in both locales while the cron runs at 02:00 UTC. Known drift, not yet fixed.
-- **Multiple stuck dev servers**: dev server starts can leave processes on 5173/5174/5175 if killed unevenly. Clean up with `lsof -i :5173 -t | xargs -r kill`.
+- **Logos under `public/logos/`** are served same-origin via Netlify (no Firebase Storage). After running any logo script: `git add public/logos/ src/services/logoManifest.ts && git push` to trigger Netlify rebuild. The cron auto-populates `logoUrl` from the manifest on each run.
+- **Dashboard needs `max-w-7xl` wrapper** — the dashboard page had no max-width container (unlike all other pages which use `max-w-6xl`). Without it the upcoming ex-dividends marquee overflows the viewport.
+- **Marquee `overflow: hidden` requires explicit width** — `.ex-dividend-marquee` must have `width: 100%; min-width: 0` otherwise the `max-content` track isn't clipped and breaks the page layout.
+- **Firestore rule field-restriction is the #1 source of "Missing or insufficient permissions"** for `users/{uid}` writes. Fix: use the simple owner-only rule.
+- **Multiple stuck dev servers**: clean up with `lsof -i :5173 -t | xargs -r kill`.
+- **`refreshesDaily` i18n string still says "8:00 UTC"** — cron runs at 02:00 UTC. Known drift, not yet fixed.
 
 ## Withholding-tax data
 
 `src/modules/settings/domain/withholding-rates.ts` — hand-curated table of statutory + bilateral treaty WHT rates for 30 source countries (EU-27 + US, UK, CH) as they apply to EU-27 retail residents.
 
-Data shape:
-```ts
-{ code, name, statutoryRate, euTreatyRate, treatyOverrides?: { [userCode]: rate }, reclaimAtSource, reclaimNote? }
-```
+`getWhtForPair(sourceCode, userCountryCode)` returns `{ statutory, treaty (null if no benefit), reclaimAtSource, reclaimNote }`.
 
-Lookup helper `getWhtForPair(sourceCode, userCountryCode)` returns `{ statutory, treaty (null if no benefit), reclaimAtSource, reclaimNote }`. Treaty is `null` when the override or the EU default is `>= statutory` — UI hides the "with treaty" cell in that case.
-
-`WHT_LAST_REVIEWED` constant is the review-date stamp shown in the UI. Bump it whenever the table is updated.
-
-Notable bilateral overrides currently encoded:
-- `US-BG` 10% (lower than EU-15% default)
-- `US-HU` 30% (treaty terminated; reverts to statutory)
-- `IE-CY` 0%, `IE-MT` 0% (special EU treaties)
+Notable bilateral overrides: `US-BG` 10%, `US-HU` 30% (terminated), `IE-CY` 0%, `IE-MT` 0%.
 
 ## Current Focus
 
-- ✅ **Cashflow v1** — new `/cashflow` page for monthly-paying instruments. Hand-curated universe (~30 tickers, US + Canadian + select monthly stocks), weekly Yahoo-driven cron, deterministic 3-tier risk badge by asset class, ex-dividend countdown chips, distribution bar chart for trailing 12 months, reused inflation badge + WHT chip. Asia skipped; UCITS-restricted US ETFs intentionally excluded.
-- ✅ **WHT v1 — education hub in Settings.** Per-source-country withholding table for the user's tax residence. 30 source countries, statutory + treaty cap, "Applied at source" vs "Reclaim required" badge, reclaim-mechanics one-liner, search filter, reviewed-date stamp, disclaimer banner.
-- ⏳ **WHT v2** — surface user-specific WHT on AI Picks list/detail and fold post-WHT yield into the inflation-beat badge math. (WHT chip already lives on the Cashflow detail page; same pattern can apply to AI Picks.)
-- ⏳ **Cashflow v2** — total-return view (price history alongside distributions), distribution-coverage signal (FFO/AFFO for REITs, NII for BDCs), highlighting recent distribution cuts.
-- 🛑 FX risk: badge ignores it (BRL/EUR drift can dwarf the inflation adjustment for cross-currency holdings).
+- ✅ **Quarterly DY v1** — new `/quarterly-dy` page for quarterly dividend payers. 50-ticker hand-curated universe (US Aristocrats/Achievers, Canadian banks & energy, UK/European), weekly Yahoo-driven cron, indigo color scheme, ex-dividend countdown chips, 5y price chart with dividend markers, WHT chip, inflation badge, follow button. Integrated into dashboard upcoming ex-dividends marquee.
+- ✅ **Cashflow v1** — monthly-paying instruments. Emerald color scheme.
+- ✅ **WHT v1** — education hub in Settings.
+- ⏳ **WHT v2** — surface WHT on AI Picks list/detail and fold post-WHT yield into the inflation-beat badge math.
+- ⏳ **Cashflow v2** — total-return view, distribution-coverage signal (FFO/AFFO for REITs, NII for BDCs).
+- ⏳ **Quarterly DY Canadian fix** — Yahoo boundary bug drops all 7 Canadian tickers. Options: (a) lower the minimum to 1, guarded by 5y check; (b) use a separate calendar API for TSX stocks.
+- 🛑 FX risk: badge ignores it.
 - 🛑 Non-EU-27 tax residences (UK, CH, NO, BR, US): need new inflation series.
-- 🛑 Total-return view, structured thesis paragraph, ex-dividend + next-payment date, deterministic `status` rubric, portfolio-level real yield (depends on `follow/` becoming a holdings tracker).
 
 ## Known Issues / TODOs
 
-Carried from README.md (only items not addressed yet):
-
 - `aiRecommendation.refreshesDaily` i18n string still says "8:00 UTC" but cron runs at 02:00 UTC
+- Canadian quarterly payers dropped by Yahoo chart() boundary bug (RY, TD, BNS, BMO, CM, TRP, CNQ)
 - 90-day earnings revisions and forward P/E vs sector median — skipped (data not freely available)
-- Monthly review of `eu-dividend-universe.mjs` — manual maintenance task
+- Monthly review of `eu-dividend-universe.mjs` and quarterly review of `quarterly-dy-universe.mjs` — manual maintenance tasks
 - WHT v2 (fold into picks pages + badge math)
 - FX honesty pass — at minimum a *"in pick currency, before FX"* label on cross-currency picks
-- Total-return view, structured thesis paragraph, ex-dividend + next-payment dates
+- Total-return view, structured thesis paragraph
 - Deterministic `status` rubric (Gemini currently decides ad-hoc)
 - Portfolio-level "Beats your inflation" — depends on `follow/` gaining cost basis + share counts
-- P5: monthly-dividend strategy module (global markets, not just EU)
